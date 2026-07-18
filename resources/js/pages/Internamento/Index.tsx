@@ -3,6 +3,9 @@ import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/react';
 
+import { useState } from 'react';
+import InternamentoModal from '../../components/internamento/InternamentoModal';
+
 const breadcrumbs: BreadcrumbItem[] = [
     {
         title: 'Internamento',
@@ -20,6 +23,11 @@ interface Props {
 }
 
 export default function Index({ items }: Props) {
+    const [selected, setSelected] = useState<any>(null);
+
+    function openModal(item: InternamentoItem) {
+        setSelected(item);
+    }
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Internamento" />
@@ -50,7 +58,8 @@ export default function Index({ items }: Props) {
                                 {items.data.map((i: any) => (
                                     <tr
                                         key={i.id}
-                                        className={`hover:bg-neutral-50 dark:hover:bg-neutral-800 border-1 ${
+                                        onDoubleClick={() => openModal(i)}
+                                        className={`border-1 hover:bg-neutral-50 dark:hover:bg-neutral-800 ${
                                             i.bloco_operatorios_count > 0 ? 'bg-blue-100' : 'bg-green-100'
                                         }`}
                                     >
@@ -94,6 +103,15 @@ export default function Index({ items }: Props) {
                     </div>
                 </div>
             </div>
+            <InternamentoModal
+                open={!!selected}
+                item={selected}
+                onClose={() => setSelected(null)}
+                onSave={(updated: any) => {
+                    console.log('Guardar no backend:', updated);
+                    // Aqui podes fazer um PUT via Inertia
+                }}
+            />
         </AppLayout>
     );
 }

@@ -2,8 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ClavienDindo;
+use App\Models\Destino;
+use App\Models\Equipa;
 use App\Models\Internamento;
+use App\Models\Origem;
+use App\Models\User;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
 
 class InternamentoController extends Controller
 {
@@ -24,12 +30,16 @@ class InternamentoController extends Controller
             ->paginate(10)
             ->withQueryString();
 
-        return inertia(
-            'Internamento/Index',
-            [
-                'items' => $internamentos
-            ]
-        );
+        return Inertia::render('Internamento/Index', [
+            'items' => $internamentos->through(fn($i) => [
+                ...$i->toArray(),
+                'destino_options' => Destino::pluck('id', 'nome'),
+                'origem_options' => Origem::pluck('id', 'nome'),
+                'responsavel_options' => User::pluck('id', 'name'),
+                'clavien_options' => ClavienDindo::pluck('id', 'nome'),
+                'equipa_options' => Equipa::pluck('id', 'nome'),
+            ])
+        ]);
     }
 
     /**
