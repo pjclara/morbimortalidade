@@ -409,7 +409,7 @@ export default function Edit({ item }: { item: ${model}Form }) {
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
-    put(\`/$model/\${item.id}\`);
+    put("/$model/" + item.id);
   }
 
   return (
