@@ -1,8 +1,7 @@
 import { PlaceholderPattern } from '@/components/ui/placeholder-pattern';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
-import { Head } from '@inertiajs/react';
-
+import { Head, router } from '@inertiajs/react';
 import { useState } from 'react';
 import InternamentoModal from '../../components/internamento/InternamentoModal';
 
@@ -19,15 +18,67 @@ interface InternamentoItem {
 }
 
 interface Props {
-    items: InternamentoItem[];
+    items: {
+        data: InternamentoItem[];
+        links: any[];
+        meta?: {
+            filters?: any;
+        };
+    };
+    filters?: {
+        processo?: string;
+        data_entrada_de?: string;
+        data_entrada_ate?: string;
+        destino_id?: number;
+        responsavel_id?: number;
+        clavien_dindo_id?: number;
+        falecido?: boolean;
+    };
+    destino_options: Record<string, number>;
+    origem_options: Record<string, number>;
+    responsavel_options: Record<string, number>;
+    clavien_options: Record<string, number>;
+    equipa_options: Record<string, number>;
 }
 
-export default function Index({ items }: Props) {
+export default function Index({ items, filters, destino_options, origem_options, responsavel_options, clavien_options, equipa_options }: Props) {
     const [selected, setSelected] = useState<any>(null);
+    const currentFilters = filters ?? {};
 
     function openModal(item: InternamentoItem) {
         setSelected(item);
     }
+
+    function applyFilter(newFilters: any) {
+        router.get('/internamentos', newFilters, {
+            preserveState: true,
+            preserveScroll: true,
+        });
+    }
+
+    function handleFilterChange(key: string, value: any) {
+        applyFilter({
+            ...currentFilters,
+            [key]: value || undefined,
+        });
+    }
+
+    function clearFilters() {
+        router.get(
+            '/internamentos',
+            {},
+            {
+                preserveState: true,
+                preserveScroll: true,
+            },
+        );
+    }
+
+    function updateData(data) {
+        router.up
+    }
+
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Internamento" />
@@ -36,6 +87,79 @@ export default function Index({ items }: Props) {
                 <div className="mb-4 flex items-center justify-between">
                     <h1 className="text-2xl font-semibold">Internamento</h1>
                 </div>
+
+                {/* FILTROS AVANÇADOS */}
+                <div className="mb-4 flex flex-wrap items-end gap-4">
+                    {/* Processo */}
+                    <div className="flex flex-col">
+                        <span className="text-sm font-medium">Processo</span>
+                        <input
+                            className="rounded-md border px-2 py-1 dark:bg-neutral-900"
+                            defaultValue={currentFilters.processo ?? ''}
+                            onBlur={(e) => handleFilterChange('processo', e.target.value)}
+                        />
+                    </div>
+
+                    {/* Data Entrada - De */}
+                    <div className="flex flex-col">
+                        <span className="text-sm font-medium">Entrada (de)</span>
+                        <input
+                            type="date"
+                            className="rounded-md border px-2 py-1 dark:bg-neutral-900"
+                            defaultValue={currentFilters.data_entrada_de ?? ''}
+                            onChange={(e) => handleFilterChange('data_entrada_de', e.target.value)}
+                        />
+                    </div>
+
+                    {/* Data Entrada - Até */}
+                    <div className="flex flex-col">
+                        <span className="text-sm font-medium">Entrada (até)</span>
+                        <input
+                            type="date"
+                            className="rounded-md border px-2 py-1 dark:bg-neutral-900"
+                            defaultValue={currentFilters.data_entrada_ate ?? ''}
+                            onChange={(e) => handleFilterChange('data_entrada_ate', e.target.value)}
+                        />
+                    </div>
+
+                    {/* Responsável */}
+                    <div className="flex flex-col">
+                        <span className="text-sm font-medium">Responsável</span>
+                        <select
+                            className="rounded-md border px-2 py-1 dark:bg-neutral-900"
+                            defaultValue={currentFilters.responsavel_id ?? ''}
+                            onChange={(e) => handleFilterChange('responsavel_id', e.target.value)}
+                        >
+                            <option value="">Todos</option>
+                            {Object.entries(responsavel_options).map(([nome, id]) => (
+                                <option key={id} value={id}>
+                                    {nome}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
+
+                    {/* Falecido (boolean premium) */}
+                    <div className="flex flex-col">
+                        <span className="text-sm font-medium">Falecido</span>
+                        <select
+                            className="rounded-md border px-2 py-1 dark:bg-neutral-900"
+                            defaultValue={currentFilters.falecido === true ? '1' : currentFilters.falecido === false ? '0' : ''}
+                            onChange={(e) => handleFilterChange('falecido', e.target.value)}
+                        >
+                            <option value="">Todos</option>
+                            <option value="1">Sim</option>
+                            <option value="0">Não</option>
+                        </select>
+                    </div>
+
+                    {/* Botão limpar filtros */}
+                    <button onClick={clearFilters} className="rounded-md bg-neutral-200 px-3 py-1 text-sm dark:bg-neutral-800 dark:text-neutral-100">
+                        Limpar filtros
+                    </button>
+                </div>
+
                 <div className="border-sidebar-border/70 dark:border-sidebar-border relative overflow-hidden rounded-xl border">
                     <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/20 dark:stroke-neutral-100/20" />
 
@@ -53,7 +177,6 @@ export default function Index({ items }: Props) {
                                     <th className="px-4 py-3 font-semibold">Observações</th>
                                 </tr>
                             </thead>
-
                             <tbody className="divide-y divide-neutral-200 dark:divide-neutral-700">
                                 {items.data.map((i: any) => (
                                     <tr
@@ -63,14 +186,14 @@ export default function Index({ items }: Props) {
                                             i.bloco_operatorios_count > 0 ? 'bg-blue-100' : 'bg-green-100'
                                         }`}
                                     >
-                                        <td className="px-4 py-2">{i.patient.processo}</td>
-                                        <td className="px-4 py-2">{i.data_entrada}</td>
-                                        <td className="px-4 py-2">{i.data_saida}</td>
-                                        <td className="px-4 py-2">{i.destino.nome}</td>
-                                        <td className="px-4 py-2">{i.dias_internamento}</td>
-                                        <td className="px-4 py-2">{i.clavien_dindo?.nome}</td>
-                                        <td className="px-4 py-2">{i.responsavel?.name}</td>
-                                        <td className="px-4 py-2">{i.observacoes}</td>
+                                        <td className="px-4 py-2">{i.patient?.processo ?? '-'}</td>
+                                        <td className="px-4 py-2">{i.data_entrada ?? '-'}</td>
+                                        <td className="px-4 py-2">{i.data_saida ?? '-'}</td>
+                                        <td className="px-4 py-2">{i.destino?.nome ?? '-'}</td>
+                                        <td className="px-4 py-2">{i.dias_internamento ?? '-'}</td>
+                                        <td className="px-4 py-2">{i.clavien_dindo?.nome ?? '-'}</td>
+                                        <td className="px-4 py-2">{i.responsavel?.name ?? '-'}</td>
+                                        <td className="px-4 py-2">{i.observacoes ?? '-'}</td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -103,13 +226,13 @@ export default function Index({ items }: Props) {
                     </div>
                 </div>
             </div>
+
             <InternamentoModal
                 open={!!selected}
                 item={selected}
                 onClose={() => setSelected(null)}
                 onSave={(updated: any) => {
-                    console.log('Guardar no backend:', updated);
-                    // Aqui podes fazer um PUT via Inertia
+                    updateData(updated);
                 }}
             />
         </AppLayout>
