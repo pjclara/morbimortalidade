@@ -4,6 +4,7 @@ import { type BreadcrumbItem } from '@/types';
 import { Head, router } from '@inertiajs/react';
 import { useState } from 'react';
 import InternamentoModal from '../../components/internamento/InternamentoModal';
+import { toast } from 'react-hot-toast';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -61,6 +62,7 @@ export default function Index({ items, filters, destino_options, origem_options,
             ...currentFilters,
             [key]: value || undefined,
         });
+        toast.success('Filtros aplicados com sucesso!');
     }
 
     function clearFilters() {
@@ -72,10 +74,18 @@ export default function Index({ items, filters, destino_options, origem_options,
                 preserveScroll: true,
             },
         );
+        toast.success('Filtros limpos com sucesso!');
     }
 
-    function updateData(data) {
-        router.up
+    function updateData(data: any) {
+        items.data = items.data.map((item) => (item.id === data.id ? { ...item, ...data } : item));
+        // Atualiza o estado do componente para refletir as alterações
+        setSelected(null);
+        setSelected((prev: any) => ({ ...prev, ...data }));
+        router.put(`/internamentos/${data.id}`, data, {
+            preserveState: true,
+            preserveScroll: true,
+        });
     }
 
 
@@ -232,6 +242,7 @@ export default function Index({ items, filters, destino_options, origem_options,
                 item={selected}
                 onClose={() => setSelected(null)}
                 onSave={(updated: any) => {
+                    toast.success('Internamento atualizado com sucesso!');
                     updateData(updated);
                 }}
             />

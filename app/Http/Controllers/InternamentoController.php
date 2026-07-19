@@ -164,7 +164,21 @@ class InternamentoController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        
+        $internamento = Internamento::findOrFail($id);
+
+        $validatedData = $request->validate([
+            'destino_id' => 'nullable|exists:destinos,id',
+            'origem_id' => 'nullable|exists:origems,id',
+            'responsavel_id' => 'nullable|exists:users,id',
+            'clavien_dindo_id' => 'nullable|exists:clavien_dindos,id',
+            'falecido' => 'nullable|boolean',
+            'observacoes' => 'nullable|string|max:1000',
+        ]);
+
+
+        $internamento->update($validatedData);
+
+        return redirect()->back()->with('success', 'Internamento atualizado com sucesso.');
     }
 
     /**
