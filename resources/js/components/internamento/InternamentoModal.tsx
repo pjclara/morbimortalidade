@@ -6,18 +6,21 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
     const [editMode, setEditMode] = useState(false);
     const [form, setForm] = useState(item || {});
 
-    const [tabs, setTabs] = useState(['internamento', 'paciente', 'diagnosticos', 'destino', 'responsavel']);
+    const INITIAL_TABS = ['internamento', 'paciente', 'diagnosticos', 'destino', 'responsavel'];
+
+    const [tabs, setTabs] = useState(INITIAL_TABS);
 
     useEffect(() => {
-        setForm(item || {});
+        if (!item) {
+            setForm({});
+            setTabs([...INITIAL_TABS]); // força novo array
+            return;
+        }
 
-        if (item?.bloco_operatorios_count > 0) {
-            setTabs((prev) => {
-                if (!prev.includes('clavien')) {
-                    return [...prev, 'clavien', 'bloco_operatorios'];
-                }
-                return prev;
-            });
+        setForm(item);
+
+        if (item.bloco_operatorios_count > 0) {
+            setTabs((prev) => (prev.includes('clavien') ? prev : [...prev, 'clavien', 'bloco_operatorios']));
         }
     }, [item]);
 
@@ -181,7 +184,7 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
                             <>
                                 <h3 className="text-lg font-semibold">Blocos Operatórios</h3>
                                 <ul className="list-disc pl-5">
-                                    {item.bloco_operatorios.map((bo: any) => (
+                                    {item.bloco_operatorios?.map((bo: any) => (
                                         <li key={bo.id}>
                                             {bo.data_intervencao}
                                             {bo.bloco_operatorio_procedimentos && bo.bloco_operatorio_procedimentos.length > 0 && (
@@ -201,7 +204,7 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
                             <>
                                 <h3 className="text-lg font-semibold">Diagnósticos</h3>
                                 <ul className="list-disc pl-5">
-                                    {item.diagnostico_internamentos.map((di: any) => (
+                                    {item.diagnostico_internamentos?.map((di: any) => (
                                         <li key={di.id} className={di.principal ? 'font-bold text-green-600' : ''}>
                                             {di.diagnostico?.nome}
                                         </li>

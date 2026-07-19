@@ -3,8 +3,8 @@ import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router } from '@inertiajs/react';
 import { useState } from 'react';
-import InternamentoModal from '../../components/internamento/InternamentoModal';
 import { toast } from 'react-hot-toast';
+import InternamentoModal from '../../components/internamento/InternamentoModal';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -88,6 +88,26 @@ export default function Index({ items, filters, destino_options, origem_options,
         });
     }
 
+    function uploadExcel(e: any) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        router.post('/internamento/import', formData, {
+            onSuccess: (page) => {
+                toast.success(`${page.props.imported} registos importados!`);
+
+                page.props.importErrors?.forEach((err: string) => {
+                    toast.error(err);
+                });
+            },
+            onError: () => {
+                toast.error('Erro ao importar ficheiro.');
+            },
+        });
+    }
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -97,7 +117,12 @@ export default function Index({ items, filters, destino_options, origem_options,
                 <div className="mb-4 flex items-center justify-between">
                     <h1 className="text-2xl font-semibold">Internamento</h1>
                 </div>
-
+                <div>
+                    <label className="cursor-pointer rounded-md bg-blue-600 px-3 py-2 text-white">
+                        Importar Excel
+                        <input type="file" accept=".xlsx,.csv" className="hidden" onChange={uploadExcel} />
+                    </label>
+                </div>
                 {/* FILTROS AVANÇADOS */}
                 <div className="mb-4 flex flex-wrap items-end gap-4">
                     {/* Processo */}
@@ -148,7 +173,6 @@ export default function Index({ items, filters, destino_options, origem_options,
                             ))}
                         </select>
                     </div>
-
 
                     {/* Falecido (boolean premium) */}
                     <div className="flex flex-col">
@@ -203,7 +227,13 @@ export default function Index({ items, filters, destino_options, origem_options,
                                         <td className="px-4 py-2">{i.dias_internamento ?? '-'}</td>
                                         <td className="px-4 py-2">{i.clavien_dindo?.nome ?? '-'}</td>
                                         <td className="px-4 py-2">{i.responsavel?.name ?? '-'}</td>
-                                        <td className="px-4 py-2">{i.observacoes ?? '-'}</td>
+                                        <td className="group relative px-4 py-2">
+                                            {i.observacoes ? i.observacoes.slice(0, 10) + (i.observacoes.length > 10 ? '...' : '') : '-'}
+
+                                            <span className="absolute top-full left-0 z-50 mt-1 hidden rounded bg-black px-2 py-1 text-xs text-white shadow-lg group-hover:block">
+                                                {i.observacoes}
+                                            </span>
+                                        </td>
                                     </tr>
                                 ))}
                             </tbody>

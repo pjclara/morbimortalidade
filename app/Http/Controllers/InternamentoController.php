@@ -17,14 +17,10 @@ class InternamentoController extends Controller
     {
         $query = Internamento::with([
             'patient',
-            'destino',
-            'origem',
-            'responsavel',
-            'clavienDindo',
-            'blocoOperatorios',
-            'diagnosticoInternamentos'
+
         ])
-        ->withCount('blocoOperatorios');
+            ->withCount('blocoOperatorios');
+
 
         /* -------------------------
         FILTRO: PROCESSO (patient)
@@ -38,12 +34,17 @@ class InternamentoController extends Controller
         /* -------------------------
         FILTRO: DATA ENTRADA (intervalo)
         --------------------------*/
-        if ($request->filled('data_entrada_de')) {
-            $query->whereDate('data_entrada', '>=', $request->data_entrada_de);
-        }
+        if ($request->filled('data_entrada_de') && $request->filled('data_entrada_ate')) {
 
-        if ($request->filled('data_entrada_ate')) {
-            $query->whereDate('data_entrada', '<=', $request->data_entrada_ate);
+            $de = $request->data_entrada_de;
+            $ate = $request->data_entrada_ate;
+
+            if ($de <= $ate) {
+                $query->whereBetween('data_saida', [$de, $ate]);
+            } else {
+                // troca automaticamente
+                $query->whereBetween('data_saida', [$ate, $de]);
+            }
         }
 
         /* -------------------------
@@ -81,15 +82,12 @@ class InternamentoController extends Controller
             $query->where('falecido', $request->falecido);
         }
 
-        /* -------------------------
-        FILTRO FIXO (o teu)
-        --------------------------*/
-        $query->where('data_alta', '>', '2025-01-01');
+
 
         /* -------------------------
         PAGINAÇÃO
         --------------------------*/
-        $internamentos = $query->paginate(20)->withQueryString();
+        $internamentos = $query->orderby('data_saida')->paginate(20)->withQueryString();
 
         /* -------------------------
         OPTIONS PARA SELECTS
@@ -187,5 +185,22 @@ class InternamentoController extends Controller
     public function destroy(string $id)
     {
         //
+    }
+
+    public function import(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|mimes:xlsx,csv'
+        ]);
+
+        $path = $request->file('file')->store('imports');
+
+        $service = new \App\Services\InternamentoImportService();
+        $result = $service->import(storage_path("app/private/{$path}"));
+
+        return back()->with([
+            'imported' => $result['imported'],
+            'importErrors' => $result['errors'],
+        ]);
     }
 }
