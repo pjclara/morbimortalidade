@@ -32,12 +32,13 @@ class Internamento extends Model
 
     public function patient()
     {
-        return $this->belongsTo(Patient::class, 'patient_id', 'id');
+        return $this->belongsTo(Patient::class, 'patient_id', 'id')->with('sexo');
     }
 
     public function blocoOperatorios()
     {
-        return $this->hasMany(BlocoOperatorio::class, 'internamento_id', 'id');
+        return $this->hasMany(BlocoOperatorio::class, 'internamento_id', 'id')
+            ->with('blocoOperatorioProcedimentos');
     }
 
     public function complicacaoInternamentos()
@@ -47,12 +48,12 @@ class Internamento extends Model
 
     public function diagnosticoInternamentos()
     {
-        return $this->hasMany(DiagnosticoInternamento::class, 'internamento_id', 'id');
+        return $this->hasMany(DiagnosticoInternamento::class, 'internamento_id', 'id')
+            ->with('diagnostico');
     }
 
     public function responsavel()
     {
         return $this->belongsTo(User::class, 'responsavel_id', 'id');
     }
-
 }

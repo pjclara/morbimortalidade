@@ -24,6 +24,8 @@ class InternamentoController extends Controller
             'origem',
             'responsavel',
             'clavienDindo',
+            'blocoOperatorios',
+            'diagnosticoInternamentos'
         ])
             ->withCount('blocoOperatorios')
             ->where('data_alta', '>', '2025-01-01')

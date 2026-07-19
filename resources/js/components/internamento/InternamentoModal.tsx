@@ -6,18 +6,24 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
     const [editMode, setEditMode] = useState(false);
     const [form, setForm] = useState(item || {});
 
+    const [tabs, setTabs] = useState(['internamento', 'paciente', 'diagnosticos', 'destino', 'responsavel']);
+
     useEffect(() => {
         setForm(item || {});
+
+        if (item?.bloco_operatorios_count > 0) {
+            setTabs((prev) => {
+                if (!prev.includes('clavien')) {
+                    return [...prev, 'clavien', 'bloco_operatorios'];
+                }
+                return prev;
+            });
+        }
     }, [item]);
 
     if (!open) return null;
 
-    const editableFields = [
-        'observacoes',
-        'clavien_dindo_id',
-        'falecido',
-        'bloquear',
-    ];
+    const editableFields = ['observacoes', 'clavien_dindo_id', 'falecido', 'bloquear'];
 
     // 🔥 Converte objetos em arrays automaticamente
     const selectFields: any = {
@@ -28,9 +34,9 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
         responsavel_id: item?.responsavel_options ? Object.entries(item.responsavel_options).map(([nome, id]) => ({ id, nome })) : null,
 
         clavien_dindo_id: item?.clavien_options ? Object.entries(item.clavien_options).map(([nome, id]) => ({ id, nome })) : null,
-
-        equipa_id: item?.equipa_options ? Object.entries(item.equipa_options).map(([nome, id]) => ({ id, nome })) : null,
     };
+
+    const booleanFields = ['falecido', 'bloquear'];
 
     function toggleMode() {
         setEditMode(!editMode);
@@ -50,6 +56,7 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
 
     function renderField(label: string, key: string, value: any) {
         const isBoolean = value === 0 || value === 1 || typeof value === 'boolean';
+        const isBooleanField = booleanFields.includes(key);
         const isEditable = editableFields.includes(key);
         const hasSelectOptions = Array.isArray(selectFields[key]);
 
@@ -59,13 +66,8 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
 
                 {!editMode && (
                     <span className="ml-4">
-                        {isBoolean
-                            ? Number(value) === 1
-                                ? 'Sim'
-                                : 'Não'
-                            : hasSelectOptions
-                              ? (selectFields[key]?.find((o: any) => o.id == value)?.nome ?? '-')
-                              : String(value)}
+                        {isBooleanField ? (value ? 'Sim' : 'Não') : (value ?? '-')}
+                        {hasSelectOptions && value && selectFields[key].find((opt: any) => opt.id === value)?.nome}
                     </span>
                 )}
 
@@ -124,7 +126,7 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
                     </div>
 
                     <div className="flex gap-2 border-b border-neutral-300 pb-2 dark:border-neutral-700">
-                        {['internamento', 'paciente', 'destino', 'responsavel', 'clavien'].map((t) => (
+                        {tabs.map((t) => (
                             <button
                                 key={t}
                                 onClick={() => setTab(t)}
@@ -148,7 +150,7 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
                                 {renderField('Alta', 'data_alta', item.data_alta)}
                                 {renderField('Saída', 'data_saida', item.data_saida)}
                                 {renderField('Dias Internamento', 'dias_internamento', item.dias_internamento)}
-                                {renderField('Observações', 'observacoes', item.observacoes)}
+                                {renderField('Observações', 'observacoes', item.observacoes ?? '-')}
                                 {renderField('Falecido', 'falecido', item.falecido)}
                                 {renderField('Bloquear', 'bloquear', item.bloquear)}
                             </>
@@ -158,7 +160,7 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
                             <>
                                 {renderField('Processo', 'patient.processo', item.patient?.processo)}
                                 {renderField('Nascimento', 'patient.data_nascimento', item.patient?.data_nascimento)}
-                                {renderField('Sexo', 'patient.sexo_id', item.patient?.sexo_id)}
+                                {renderField('Sexo', 'patient.sexo_id', item.patient?.sexo?.nome)}
                             </>
                         )}
 
@@ -169,17 +171,42 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
                             </>
                         )}
 
-                        {tab === 'responsavel' && (
+                        {tab === 'responsavel' && <>{renderField('Responsável', 'responsavel_id', item.responsavel?.name)}</>}
+
+                        {tab === 'clavien' && item?.bloco_operatorios_count > 0 && (
+                            <>{renderField('Clavien-Dindo', 'clavien_dindo_id', item.clavien_dindo?.nome)}</>
+                        )}
+
+                        {tab === 'bloco_operatorios' && item?.bloco_operatorios_count > 0 && (
                             <>
-                                {renderField('Responsável', 'responsavel_id', item.responsavel?.name)}
-                                {renderField('Email', 'responsavel.email', item.responsavel?.email)}
+                                <h3 className="text-lg font-semibold">Blocos Operatórios</h3>
+                                <ul className="list-disc pl-5">
+                                    {item.bloco_operatorios.map((bo: any) => (
+                                        <li key={bo.id}>
+                                            {bo.data_intervencao}
+                                            {bo.bloco_operatorio_procedimentos && bo.bloco_operatorio_procedimentos.length > 0 && (
+                                                <ul className="list-disc pl-5">
+                                                    {bo.bloco_operatorio_procedimentos.map((bop: any) => (
+                                                        <li key={bop.id}>{bop.procedimento?.nome}</li>
+                                                    ))}
+                                                </ul>
+                                            )}
+                                        </li>
+                                    ))}
+                                </ul>
                             </>
                         )}
 
-                        {tab === 'clavien' && (
+                        {tab === 'diagnosticos' && (
                             <>
-                                {renderField('Clavien-Dindo', 'clavien_dindo_id', item.clavien_dindo?.nome)}
-                                {renderField('Descrição', 'clavien_dindo.descricao', item.clavien_dindo?.descricao)}
+                                <h3 className="text-lg font-semibold">Diagnósticos</h3>
+                                <ul className="list-disc pl-5">
+                                    {item.diagnostico_internamentos.map((di: any) => (
+                                        <li key={di.id} className={di.principal ? 'font-bold text-green-600' : ''}>
+                                            {di.diagnostico?.nome}
+                                        </li>
+                                    ))}
+                                </ul>
                             </>
                         )}
                     </div>

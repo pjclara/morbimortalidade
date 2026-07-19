@@ -20,4 +20,10 @@ class BlocoOperatorio extends Model
         return $this->belongsTo(TipoDeCirurgia::class, 'tipo_de_cirurgia_id', 'id');
     }
 
+    public function blocoOperatorioProcedimentos()
+    {
+        return $this->hasMany(BlocoOperatorioProcedimento::class, 'bloco_operatorio_id', 'id')
+            ->with('procedimento');
+    }
+
 }
