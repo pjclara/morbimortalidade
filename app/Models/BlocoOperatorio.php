@@ -26,4 +26,8 @@ class BlocoOperatorio extends Model
             ->with('procedimento');
     }
 
+    public function procedimentos()
+    {
+        return $this->belongsToMany(Procedimento::class);
+    }
 }

@@ -109,6 +109,27 @@ export default function Index({ items, filters, destino_options, origem_options,
         });
     }
 
+    function uploadExcelBloco(e: any) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        router.post('/internamento/importBloco', formData, {
+            onSuccess: (page) => {
+                toast.success(`${page.props.imported} registos importados!`);
+
+                page.props.importErrors?.forEach((err: string) => {
+                    toast.error(err);
+                });
+            },
+            onError: () => {
+                toast.error('Erro ao importar ficheiro.');
+            },
+        });
+    }
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Internamento" />
@@ -121,6 +142,12 @@ export default function Index({ items, filters, destino_options, origem_options,
                     <label className="cursor-pointer rounded-md bg-blue-600 px-3 py-2 text-white">
                         Importar internamento
                         <input type="file" accept=".xlsx,.csv" className="hidden" onChange={uploadExcel} />
+                    </label>
+                </div>
+                <div>
+                    <label className="cursor-pointer rounded-md bg-blue-600 px-3 py-2 text-white">
+                        Importar Bloco
+                        <input type="file" accept=".xlsx,.csv" className="hidden" onChange={uploadExcelBloco} />
                     </label>
                 </div>
                 {/* FILTROS AVANÇADOS */}

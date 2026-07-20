@@ -71,3 +71,6 @@ Route::resource('users', UserController::class);
 // post route for importing internamentos
 Route::post('/internamento/import', [InternamentoController::class, 'import'])
     ->name('internamento.import');
+// post route for importing internamentos
+Route::post('/internamento/importBloco', [InternamentoController::class, 'importBloco'])
+    ->name('internamento.importBloco');

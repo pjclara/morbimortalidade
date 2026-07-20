@@ -15,4 +15,8 @@ class Procedimento extends Model
         return $this->belongsTo(GrupoProcedimento::class, 'grupo_procedimento_id', 'id');
     }
 
+    public function blocos()
+    {
+        return $this->belongsToMany(BlocoOperatorio::class);
+    }
 }

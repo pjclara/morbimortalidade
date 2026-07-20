@@ -7,6 +7,7 @@ use App\Models\Destino;
 use App\Models\Internamento;
 use App\Models\Origem;
 use App\Models\User;
+use App\Services\BlocoOperatorioImportService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -201,6 +202,23 @@ class InternamentoController extends Controller
         $path = $request->file('file')->store('imports');
 
         $service = new \App\Services\InternamentoImportService();
+        $result = $service->import(storage_path("app/private/{$path}"));
+
+        return back()->with([
+            'imported' => $result['imported'],
+            'importErrors' => $result['errors'],
+        ]);
+    }
+
+    public function importBloco(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|mimes:xlsx,csv'
+        ]);
+
+        $path = $request->file('file')->store('imports');
+
+        $service = new BlocoOperatorioImportService();
         $result = $service->import(storage_path("app/private/{$path}"));
 
         return back()->with([
