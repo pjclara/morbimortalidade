@@ -21,9 +21,8 @@ class InternamentoController extends Controller
             'origem',
             'destino',
             'clavienDindo',
-            'blocoOperatorios'
-
-
+            'blocoOperatorios',
+            'responsavel'
         ])
             ->withCount('blocoOperatorios');
 
