@@ -20,4 +20,8 @@ class Diagnostico extends Model
         return $this->hasMany(DiagnosticoInternamento::class, 'diagnostico_id', 'id');
     }
 
+    public function internamentos()
+    {
+        return $this->belongsToMany(Internamento::class);
+    }
 }

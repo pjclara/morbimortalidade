@@ -204,9 +204,9 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
                             <>
                                 <h3 className="text-lg font-semibold">Diagnósticos</h3>
                                 <ul className="list-disc pl-5">
-                                    {item.diagnostico_internamentos?.map((di: any) => (
+                                    {item.diagnosticos?.map((di: any) => (
                                         <li key={di.id} className={di.principal ? 'font-bold text-green-600' : ''}>
-                                            {di.diagnostico?.nome}
+                                            {di.nome}
                                         </li>
                                     ))}
                                 </ul>

@@ -56,4 +56,9 @@ class Internamento extends Model
     {
         return $this->belongsTo(User::class, 'responsavel_id', 'id');
     }
+
+    public function diagnosticos()
+    {
+        return $this->belongsToMany(Diagnostico::class);
+    }
 }

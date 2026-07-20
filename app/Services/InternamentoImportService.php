@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Destino;
+use App\Models\Diagnostico;
 use App\Models\Internamento;
 use App\Models\Origem;
 use App\Models\Patient;
@@ -15,12 +16,16 @@ class InternamentoImportService
     protected array $destinos;
     protected array $origens;
     protected array $episodios;
+    protected array $diagnosticos;
+
 
     public function import(string $path): array
     {
         $this->destinos = Destino::pluck('id', 'nome')->toArray();
         $this->origens = Origem::pluck('id', 'id')->toArray();
         $this->episodios = Internamento::pluck('id', 'episodio')->toArray();
+        $this->diagnosticos = Diagnostico::pluck('id', 'codigo')->toArray();
+
 
         $importados = 0;
         $erros = [];
@@ -40,13 +45,15 @@ class InternamentoImportService
                     }
 
                     DB::transaction(function () use ($row, $importados) {
-                    
+
                         $patient = $this->obterPaciente($row);
-                        $this->criarInternamento($row, $patient);
+                        $internamento = $this->criarInternamento($row, $patient);
+
+                        // 🔥 adicionar diagnósticos
+                        $this->addDiagnosticos($row, $internamento);
+
                         $importados++;
-
                     });
-
                 } catch (\Throwable $e) {
 
                     $erros[] = "Linha {$index}: {$e->getMessage()}";
@@ -85,12 +92,12 @@ class InternamentoImportService
         );
     }
 
-    private function criarInternamento(array $row, Patient $patient): void
+    private function criarInternamento(array $row, Patient $patient): Internamento
     {
         $destinoId = $this->destinos[$row['Alta']] ?? null;
         $origemId = $this->origens[$row['COD_PROVENIENCIA']] ?? 99;
 
-        Internamento::create([
+        $internamento = Internamento::create([
             'patient_id'          => $patient->id,
             'episodio'            => $row['INT_EPISODIO'],
             'data_entrada'        => $row['DTA_INTERNAMENTO'],
@@ -104,5 +111,45 @@ class InternamentoImportService
 
         // Atualiza a cache para evitar importar o mesmo episódio novamente
         $this->episodios[$row['INT_EPISODIO']] = true;
+
+        return $internamento;
+    }
+
+    private function addDiagnosticos(array $row, Internamento $internamento): void
+    {
+
+        if (empty($row['COD_DIAGNOSTICO'])) {
+            return;
+        }
+
+        // Exemplo: "K35.2; K36; K37"
+        $lista = explode(';', $row['COD_DIAGNOSTICO']);
+
+        foreach ($lista as $item) {
+
+            $codigo = trim($item);
+
+            if ($codigo === '') {
+                continue;
+            }
+
+            // Verificar se já existe na cache
+            $diagnosticoId = $this->diagnosticos[$codigo] ?? null;
+
+            // Criar diagnóstico se não existir
+            if (!$diagnosticoId) {
+                $diagnostico = Diagnostico::create([
+                    'codigo'     => $codigo,
+                    'descricao'  => $codigo, // ou outra coluna do Excel
+                ]);
+
+                // Atualizar cache
+                $this->diagnosticos[$codigo] = $diagnostico->id;
+                $diagnosticoId = $diagnostico->id;
+            }
+
+            // Associar ao internamento (evita duplicados)
+            $internamento->diagnosticos()->syncWithoutDetaching([$diagnosticoId]);
+        }
     }
 }

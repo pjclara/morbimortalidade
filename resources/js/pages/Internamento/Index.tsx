@@ -119,7 +119,7 @@ export default function Index({ items, filters, destino_options, origem_options,
                 </div>
                 <div>
                     <label className="cursor-pointer rounded-md bg-blue-600 px-3 py-2 text-white">
-                        Importar Excel
+                        Importar internamento
                         <input type="file" accept=".xlsx,.csv" className="hidden" onChange={uploadExcel} />
                     </label>
                 </div>
@@ -240,7 +240,13 @@ export default function Index({ items, filters, destino_options, origem_options,
                         </table>
 
                         {/* PAGINAÇÃO PREMIUM */}
-                        <div className="mt-4 flex justify-center">
+                        <div className="mt-4 flex flex-col items-center gap-2">
+                            {/* Informação de contagem */}
+                            <div className="text-sm text-neutral-600 dark:text-neutral-300">
+                                Mostrando {items.from}–{items.to} de {items.total} registos
+                            </div>
+
+                            {/* Paginação */}
                             <div className="inline-flex gap-1">
                                 {items.links.map((link: any, index: number) => {
                                     const isActive = link.active;
@@ -249,7 +255,7 @@ export default function Index({ items, filters, destino_options, origem_options,
                                     return (
                                         <a
                                             key={index}
-                                            href={link.url ?? null}
+                                            href={link.url ?? undefined}
                                             className={
                                                 'rounded-md border px-3 py-1 text-sm transition-colors ' +
                                                 (isActive

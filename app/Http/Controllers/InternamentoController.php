@@ -17,6 +17,12 @@ class InternamentoController extends Controller
     {
         $query = Internamento::with([
             'patient',
+            'diagnosticos',
+            'origem',
+            'destino',
+            'clavienDindo',
+            'blocoOperatorios'
+
 
         ])
             ->withCount('blocoOperatorios');
