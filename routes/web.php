@@ -6,6 +6,7 @@ use App\Http\Controllers\ClavienDindoController;
 use App\Http\Controllers\ComplicacaoController;
 use App\Http\Controllers\ComplicacaoInternamentoController;
 use App\Http\Controllers\ComplicacaoResolucaoController;
+use App\Http\Controllers\DashboardCirurgiaController;
 use App\Http\Controllers\DestinoController;
 use App\Http\Controllers\DiagnosticoController;
 use App\Http\Controllers\DiagnosticoInternamentoController;
@@ -34,13 +35,12 @@ Route::get('/', function () {
 })->name('home');
 
 Route::middleware(['auth'])->group(function () {
-    Route::get('dashboard', function () {
-        return Inertia::render('dashboard');
-    })->name('dashboard');
+    Route::get('/dashboard', [DashboardCirurgiaController::class, 'index'])
+        ->name('dashboard.index');
 });
 
-require __DIR__.'/settings.php';
-require __DIR__.'/auth.php';
+require __DIR__ . '/settings.php';
+require __DIR__ . '/auth.php';
 Route::resource('bloco_operatorio_procedimento', BlocoOperatorioProcedimentoController::class);
 Route::resource('bloco_operatorios', BlocoOperatorioController::class);
 Route::resource('clavien_dindos', ClavienDindoController::class);

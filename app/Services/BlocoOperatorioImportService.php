@@ -38,9 +38,7 @@ class BlocoOperatorioImportService
 
                         $tipoCirurgiaId = $this->obterTipoCirurgia($row);
 
-
                         $blocoOperatorio = $this->criarOuAtualizarBloco($row, $internamento, $tipoCirurgiaId);
-                        
 
                         $this->addProcedimentos($row, $blocoOperatorio);
 
@@ -59,9 +57,9 @@ class BlocoOperatorioImportService
 
     private function validarLinha(array $row): void
     {
-        if (empty($row['NUM_EPISODIO'])) {
-            throw new \Exception('NUM_EPISODIO em falta.');
-        }
+        //if (empty($row['NUM_EPISODIO'])) {
+        //    throw new \Exception('NUM_EPISODIO em falta.');
+        //}
 
         if (empty($row['BLO_NUM_REG'])) {
             throw new \Exception('BLO_NUM_REG em falta.');
@@ -72,16 +70,23 @@ class BlocoOperatorioImportService
         }
     }
 
-    private function obterInternamento(array $row): Internamento
+    private function obterInternamento(array $row): ?Internamento
     {
-        $episodio = $row['NUM_EPISODIO'];
+        $episodio = $row['NUM_EPISODIO'] ?? null;
 
+        // Se não houver episódio → é ambulatório → sem internamento
+        if (!$episodio) {
+            return null;
+        }
+
+        // Se existir episódio mas não existir internamento → também é ambulatório
         if (!isset($this->internamentos[$episodio])) {
-            throw new \Exception("Internamento não encontrado para episódio {$episodio}");
+            return null;
         }
 
         return Internamento::find($this->internamentos[$episodio]);
     }
+
 
     private function obterTipoCirurgia(array $row): int
     {
@@ -106,13 +111,15 @@ class BlocoOperatorioImportService
         return $tipo->id;
     }
 
-    private function criarOuAtualizarBloco(array $row, Internamento $internamento, int $tipoCirurgiaId): BlocoOperatorio
+    private function criarOuAtualizarBloco(array $row, ?Internamento $internamento, int $tipoCirurgiaId): BlocoOperatorio
     {
         $bloco = BlocoOperatorio::where('bloco_num', $row['BLO_NUM_REG'])->first();
 
+        $internamentoId = $internamento?->id;
+
         if ($bloco) {
             $bloco->update([
-                'internamento_id'     => $internamento->id,
+                'internamento_id'     => $internamentoId,
                 'tipo_de_cirurgia_id' => $tipoCirurgiaId,
                 'ambulatorio'         => $row['CIR_AMB'] ?? 'N',
                 'data_intervencao'    => $row['DTA_INTERVENCAO'],
@@ -122,7 +129,7 @@ class BlocoOperatorioImportService
         }
 
         return BlocoOperatorio::create([
-            'internamento_id'     => $internamento->id,
+            'internamento_id'     => $internamentoId,
             'tipo_de_cirurgia_id' => $tipoCirurgiaId,
             'ambulatorio'         => $row['CIR_AMB'] ?? 'N',
             'bloco_num'           => $row['BLO_NUM_REG'],
@@ -130,16 +137,16 @@ class BlocoOperatorioImportService
         ]);
     }
 
+
     private function addProcedimentos(array $row, BlocoOperatorio $blocoOperatorio): void
     {
         if (empty($row['COD_INTERV_CIRURGICA']) && empty($row['PROCEDIMENTO PRINCIPAL'])) {
             return;
         }
-        
+
         $codigos = preg_split('/[;,]/', $row['COD_INTERV_CIRURGICA']);
-        
-        $nomePrincipal = trim($row['PROCEDIMENTO PRINCIPAL'] ?? '');
-;
+
+        $nomePrincipal = trim($row['PROCEDIMENTO PRINCIPAL'] ?? '');;
 
         foreach ($codigos as $codigoRaw) {
 
@@ -161,7 +168,6 @@ class BlocoOperatorioImportService
             }
 
             $blocoOperatorio->procedimentos()->syncWithoutDetaching([$procedimentoId]);
-
         }
     }
 }
