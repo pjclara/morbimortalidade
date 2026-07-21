@@ -27,6 +27,7 @@ use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SexoController;
 use App\Http\Controllers\TipoDeCirurgiaController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\UserRoleController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -74,3 +75,7 @@ Route::post('/internamento/import', [InternamentoController::class, 'import'])
 // post route for importing internamentos
 Route::post('/internamento/importBloco', [InternamentoController::class, 'importBloco'])
     ->name('internamento.importBloco');
+
+    Route::get('/admin/users', [UserRoleController::class, 'index'])->name('admin.users');
+    Route::post('/admin/users/{user}/roles', [UserRoleController::class, 'updateRoles'])->name('admin.users.roles');
+

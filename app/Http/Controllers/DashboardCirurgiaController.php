@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\BlocoOperatorio;
 use App\Models\Procedimento;
 use App\Models\TipoDeCirurgia;
+use App\Services\MenuService;
 use Inertia\Inertia;
 
 class DashboardCirurgiaController extends Controller
