@@ -36,7 +36,7 @@ Route::get('/', function () {
 
 Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', [DashboardCirurgiaController::class, 'index'])
-        ->name('dashboard.index');
+        ->name('dashboard');
 });
 
 require __DIR__ . '/settings.php';
