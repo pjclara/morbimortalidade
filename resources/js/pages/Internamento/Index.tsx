@@ -31,7 +31,7 @@ interface Props {
         data_entrada_de?: string;
         data_entrada_ate?: string;
         destino_id?: number;
-        responsavel_id?: number;
+        responsavel_id?: number | null;
         clavien_dindo_id?: number;
         falecido?: boolean;
     };
@@ -77,6 +77,9 @@ export default function Index({ items, filters, destino_options, origem_options,
         toast.success('Filtros limpos com sucesso!');
     }
 
+    const [loadingInternamento, setLoadingInternamento] = useState(false);
+    const [loadingBloco, setLoadingBloco] = useState(false);
+
     function updateData(data: any) {
         items.data = items.data.map((item) => (item.id === data.id ? { ...item, ...data } : item));
         // Atualiza o estado do componente para refletir as alterações
@@ -89,8 +92,16 @@ export default function Index({ items, filters, destino_options, origem_options,
     }
 
     function uploadExcel(e: any) {
-        const file = e.target.files[0];
+        const file = e.target.files?.[0];
         if (!file) return;
+
+        const allowed = ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'text/csv'];
+
+        if (!allowed.includes(file.type)) {
+            alert('Formato inválido. Use .xlsx ou .csv');
+            return;
+        }
+        setLoadingInternamento(true);
 
         const formData = new FormData();
         formData.append('file', file);
@@ -107,11 +118,20 @@ export default function Index({ items, filters, destino_options, origem_options,
                 toast.error('Erro ao importar ficheiro.');
             },
         });
+        setLoadingInternamento(false);
     }
 
     function uploadExcelBloco(e: any) {
-        const file = e.target.files[0];
+        const file = e.target.files?.[0];
         if (!file) return;
+
+        const allowed = ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'text/csv'];
+
+        if (!allowed.includes(file.type)) {
+            alert('Formato inválido. Use .xlsx ou .csv');
+            return;
+        }
+        setLoadingBloco(true);
 
         const formData = new FormData();
         formData.append('file', file);
@@ -128,6 +148,7 @@ export default function Index({ items, filters, destino_options, origem_options,
                 toast.error('Erro ao importar ficheiro.');
             },
         });
+        setLoadingBloco(false);
     }
 
     return (
@@ -138,18 +159,21 @@ export default function Index({ items, filters, destino_options, origem_options,
                 <div className="mb-4 flex items-center justify-between">
                     <h1 className="text-2xl font-semibold">Internamento</h1>
                 </div>
-                <div>
-                    <label className="cursor-pointer rounded-md bg-blue-600 px-3 py-2 text-white">
-                        Importar internamento
-                        <input type="file" accept=".xlsx,.csv" className="hidden" onChange={uploadExcel} />
-                    </label>
+                <div className="space-y-4">
+                    {/* Linha 1 – Internamento */}
+                    <div className="flex justify-end">
+                        <label className="mr-2 cursor-pointer rounded-md bg-blue-600 px-3 py-2 text-white">
+                            {loadingInternamento ? 'A carregar...' : 'Importar Internamentos'}
+                            <input type="file" accept=".xlsx,.csv" className="hidden" onChange={uploadExcel} />
+                        </label>
+
+                        <label className="cursor-pointer rounded-md bg-blue-600 px-3 py-2 text-white">
+                            {loadingBloco ? 'A carregar...' : 'Importar Blocos'}
+                            <input type="file" accept=".xlsx,.csv" className="hidden" onChange={uploadExcelBloco} />
+                        </label>
+                    </div>
                 </div>
-                <div>
-                    <label className="cursor-pointer rounded-md bg-blue-600 px-3 py-2 text-white">
-                        Importar Bloco
-                        <input type="file" accept=".xlsx,.csv" className="hidden" onChange={uploadExcelBloco} />
-                    </label>
-                </div>
+
                 {/* FILTROS AVANÇADOS */}
                 <div className="mb-4 flex flex-wrap items-end gap-4">
                     {/* Processo */}

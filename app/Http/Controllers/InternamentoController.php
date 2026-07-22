@@ -40,18 +40,30 @@ class InternamentoController extends Controller
         /* -------------------------
         FILTRO: DATA ENTRADA (intervalo)
         --------------------------*/
-        if ($request->filled('data_entrada_de') && $request->filled('data_entrada_ate')) {
+        // Datas vindas do request
+        $de = $request->input('data_entrada_de');
+        $ate = $request->input('data_entrada_ate');
 
-            $de = $request->data_entrada_de;
-            $ate = $request->data_entrada_ate;
-
-            if ($de <= $ate) {
-                $query->whereBetween('data_saida', [$de, $ate]);
-            } else {
-                // troca automaticamente
-                $query->whereBetween('data_saida', [$ate, $de]);
-            }
+        // Se o utilizador NÃO enviou datas → usar intervalo padrão
+        if (!$de || !$ate) {
+            $de = '2025-09-01';
+            $ate = '2025-09-30';
         }
+
+        // Garantir que a data inicial é menor que a final
+        if ($de > $ate) {
+            [$de, $ate] = [$ate, $de]; // troca automática
+        }
+
+        // Aplicar filtro
+        $query->whereBetween('data_saida', [$de, $ate]);
+
+        // Enviar os filtros para o frontend
+        $filtros = [
+            'data_entrada_de' => $de,
+            'data_entrada_ate' => $ate,
+        ];
+
 
         /* -------------------------
         FILTRO: DESTINO
@@ -100,8 +112,22 @@ class InternamentoController extends Controller
         --------------------------*/
         $destinoOptions = Destino::pluck('id', 'nome');
         $origemOptions = Origem::pluck('id', 'nome');
-        $responsavelOptions = User::pluck('id', 'name');
+        $responsavelOptions = User::where('ativo', true)->pluck('id', 'name');
         $clavienOptions = ClavienDindo::pluck('id', 'nome');
+
+        // filtros fixos vindos do request
+        $filtersFixos = $request->only([
+            'processo',
+            'destino_id',
+            'origem_id',
+            'responsavel_id',
+            'clavien_dindo_id',
+            'falecido'
+        ]);
+
+        // filtros dinâmicos (ex: datas, tipo_filtro, bloco, etc.)
+        $filters = array_merge($filtersFixos, $filtros);
+
 
         return Inertia::render('Internamento/Index', [
             'items' => $internamentos->through(fn($i) => [
@@ -112,16 +138,7 @@ class InternamentoController extends Controller
                 'clavien_options' => $clavienOptions,
             ]),
 
-            'filters' => $request->only([
-                'processo',
-                'data_entrada_de',
-                'data_entrada_ate',
-                'destino_id',
-                'origem_id',
-                'responsavel_id',
-                'clavien_dindo_id',
-                'falecido'
-            ]),
+            'filters' => $filters,
 
             'destino_options' => $destinoOptions,
             'origem_options' => $origemOptions,
