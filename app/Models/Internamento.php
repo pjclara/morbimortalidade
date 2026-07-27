@@ -43,7 +43,7 @@ class Internamento extends Model
 
     public function complicacaoInternamentos()
     {
-        return $this->hasMany(ComplicacaoInternamento::class, 'internamento_id', 'id');
+        return $this->hasMany(ComplicacaoInternamento::class, 'internamento_id', 'id')->with('complicacao','resolucaos');
     }
 
     public function diagnosticoInternamentos()

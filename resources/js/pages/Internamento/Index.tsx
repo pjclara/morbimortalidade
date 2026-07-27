@@ -35,14 +35,10 @@ interface Props {
         clavien_dindo_id?: number;
         falecido?: boolean;
     };
-    destino_options: Record<string, number>;
-    origem_options: Record<string, number>;
     responsavel_options: Record<string, number>;
-    clavien_options: Record<string, number>;
-    equipa_options: Record<string, number>;
 }
 
-export default function Index({ items, filters, destino_options, origem_options, responsavel_options, clavien_options, equipa_options }: Props) {
+export default function Index({ items, filters, responsavel_options }: Props) {
     const [selected, setSelected] = useState<any>(null);
     const currentFilters = filters ?? {};
 

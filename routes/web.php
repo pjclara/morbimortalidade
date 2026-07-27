@@ -10,6 +10,7 @@ use App\Http\Controllers\DashboardCirurgiaController;
 use App\Http\Controllers\DestinoController;
 use App\Http\Controllers\DiagnosticoController;
 use App\Http\Controllers\DiagnosticoInternamentoController;
+use App\Http\Controllers\DistribuicaoController;
 use App\Http\Controllers\EquipaController;
 use App\Http\Controllers\FailedImportRowController;
 use App\Http\Controllers\GrupoComplicacaoController;
@@ -76,6 +77,10 @@ Route::post('/internamento/import', [InternamentoController::class, 'import'])
 Route::post('/internamento/importBloco', [InternamentoController::class, 'importBloco'])
     ->name('internamento.importBloco');
 
-    Route::get('/admin/users', [UserRoleController::class, 'index'])->name('admin.users');
-    Route::post('/admin/users/{user}/roles', [UserRoleController::class, 'updateRoles'])->name('admin.users.roles');
+Route::get('/admin/users', [UserRoleController::class, 'index'])->name('admin.users');
+Route::post('/admin/users/{user}/roles', [UserRoleController::class, 'updateRoles'])->name('admin.users.roles');
 
+
+Route::get('/distribuicao', [DistribuicaoController::class, 'index']);
+Route::get('/distribuicao/simular', [DistribuicaoController::class, 'simular']);
+Route::post('/distribuicao/executar', [DistribuicaoController::class, 'executar']);

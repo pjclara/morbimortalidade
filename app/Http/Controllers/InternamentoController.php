@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\ClavienDindo;
+use App\Models\Complicacao;
 use App\Models\Destino;
 use App\Models\Internamento;
 use App\Models\Origem;
+use App\Models\Resolucao;
 use App\Models\User;
 use App\Services\BlocoOperatorioImportService;
 use Illuminate\Http\Request;
@@ -23,7 +25,8 @@ class InternamentoController extends Controller
             'destino',
             'clavienDindo',
             'blocoOperatorios',
-            'responsavel'
+            'responsavel',
+            'complicacaoInternamentos'
         ])
             ->withCount('blocoOperatorios');
 
@@ -128,6 +131,9 @@ class InternamentoController extends Controller
         // filtros dinâmicos (ex: datas, tipo_filtro, bloco, etc.)
         $filters = array_merge($filtersFixos, $filtros);
 
+        $complicacoesList = Complicacao::pluck('id', 'nome');
+        $resolucoesList = Resolucao::pluck('id', 'nome');
+
 
         return Inertia::render('Internamento/Index', [
             'items' => $internamentos->through(fn($i) => [
@@ -136,6 +142,8 @@ class InternamentoController extends Controller
                 'origem_options' => $origemOptions,
                 'responsavel_options' => $responsavelOptions,
                 'clavien_options' => $clavienOptions,
+                'complicacao_options' => $complicacoesList,
+                'resolucao_options' => $resolucoesList
             ]),
 
             'filters' => $filters,
@@ -143,7 +151,8 @@ class InternamentoController extends Controller
             'destino_options' => $destinoOptions,
             'origem_options' => $origemOptions,
             'responsavel_options' => $responsavelOptions,
-            'clavien_options' => $clavienOptions
+            'clavien_options' => $clavienOptions,
+
         ]);
     }
 

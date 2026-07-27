@@ -29,6 +29,12 @@ class MenuService
                 'icon' => 'Users',
                 'roles' => ['super_admin'],
             ],
+            [
+                'title' => 'Distribuição',
+                'href' => '/distribuicao',
+                'icon' => 'Users',
+                'roles' => ['super_admin'],
+            ],
         ];
 
         return collect($menu)->filter(function ($item) use ($user) {

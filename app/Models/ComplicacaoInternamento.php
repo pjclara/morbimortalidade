@@ -8,7 +8,7 @@ class ComplicacaoInternamento extends Model
 {
     protected $fillable = ['complicacao_id', 'internamento_id', 'resolucaos'];
 
-    //
+    protected $table = 'complicacao_internamento';
 
     public function complicacao()
     {
@@ -20,4 +20,8 @@ class ComplicacaoInternamento extends Model
         return $this->belongsTo(Internamento::class, 'internamento_id', 'id');
     }
 
+    public function resolucaos()
+    {
+        return $this->belongsToMany(Resolucao::class, 'complicacao_resolucao');
+    }
 }
