@@ -61,4 +61,5 @@ class Internamento extends Model
     {
         return $this->belongsToMany(Diagnostico::class);
     }
+    
 }

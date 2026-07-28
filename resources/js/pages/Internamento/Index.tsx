@@ -77,10 +77,7 @@ export default function Index({ items, filters, responsavel_options }: Props) {
     const [loadingBloco, setLoadingBloco] = useState(false);
 
     function updateData(data: any) {
-        items.data = items.data.map((item) => (item.id === data.id ? { ...item, ...data } : item));
-        // Atualiza o estado do componente para refletir as alterações
-        setSelected(null);
-        setSelected((prev: any) => ({ ...prev, ...data }));
+        setSelected(data);
         router.put(`/internamentos/${data.id}`, data, {
             preserveState: true,
             preserveScroll: true,
@@ -325,8 +322,7 @@ export default function Index({ items, filters, responsavel_options }: Props) {
                 item={selected}
                 onClose={() => setSelected(null)}
                 onSave={(updated: any) => {
-                    toast.success('Internamento atualizado com sucesso!');
-                    updateData(updated);
+                    updateData(updated)
                 }}
             />
         </AppLayout>

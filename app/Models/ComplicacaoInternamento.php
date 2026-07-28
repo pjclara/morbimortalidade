@@ -10,6 +10,8 @@ class ComplicacaoInternamento extends Model
 
     protected $table = 'complicacao_internamento';
 
+    public $timestamps = false;
+
     public function complicacao()
     {
         return $this->belongsTo(Complicacao::class, 'complicacao_id', 'id');
@@ -22,6 +24,11 @@ class ComplicacaoInternamento extends Model
 
     public function resolucaos()
     {
-        return $this->belongsToMany(Resolucao::class, 'complicacao_resolucao');
+        return $this->belongsToMany(
+            Resolucao::class,
+            'complicacao_resolucao',
+            'complicacao_internamento_id',
+            'resolucao_id'
+        );
     }
 }

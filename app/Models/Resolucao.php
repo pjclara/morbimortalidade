@@ -20,4 +20,9 @@ class Resolucao extends Model
         return $this->hasMany(ComplicacaoResolucao::class, 'resolucao_id', 'id');
     }
 
+        public function complicacaoInternamento()
+    {
+        return $this->belongsTo(ComplicacaoInternamento::class, 'complicacao_id', 'id');
+    }
+
 }

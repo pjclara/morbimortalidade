@@ -11,6 +11,8 @@ use App\Models\Resolucao;
 use App\Models\User;
 use App\Services\BlocoOperatorioImportService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
 class InternamentoController extends Controller
@@ -131,8 +133,8 @@ class InternamentoController extends Controller
         // filtros dinâmicos (ex: datas, tipo_filtro, bloco, etc.)
         $filters = array_merge($filtersFixos, $filtros);
 
-        $complicacoesList = Complicacao::pluck('id', 'nome');
-        $resolucoesList = Resolucao::pluck('id', 'nome');
+        $complicacoesList = Complicacao::orderBy('nome', 'asc')->pluck('id', 'nome');
+        $resolucoesList = Resolucao::orderBy('nome', 'asc')->pluck('id', 'nome');
 
 
         return Inertia::render('Internamento/Index', [
@@ -198,15 +200,94 @@ class InternamentoController extends Controller
 
         $validatedData = $request->validate([
             'destino_id' => 'nullable|exists:destinos,id',
+            'data_alta' => [
+                'nullable',
+                'date',
+                Rule::date()->beforeOrEqual($internamento->data_saida),
+            ],
             'origem_id' => 'nullable|exists:origems,id',
             'responsavel_id' => 'nullable|exists:users,id',
             'clavien_dindo_id' => 'nullable|exists:clavien_dindos,id',
             'falecido' => 'nullable|boolean',
             'observacoes' => 'nullable|string|max:1000',
+            'complicacao_internamentos' => 'nullable|array',
+            'complicacao_internamentos.*.id' => 'nullable|exists:complicacao_internamento,id',
+            'complicacao_internamentos.*.complicacao_id' => 'nullable|exists:complicacaos,id',
+            'complicacao_internamentos.*.resolucaos' => 'nullable|array',
+            'complicacao_internamentos.*.resolucaos.*.id' => 'nullable|exists:resolucaos,id',
         ]);
 
+        $complicacaoInternamentosData = $validatedData['complicacao_internamentos'] ?? [];
+        unset($validatedData['complicacao_internamentos']);
 
-        $internamento->update($validatedData);
+        DB::transaction(function () use ($internamento, $validatedData, $complicacaoInternamentosData) {
+            $internamento->update($validatedData);
+
+            $incomingIds = [];
+
+            foreach ($complicacaoInternamentosData as $ciData) {
+                $resolvedIds = array_values(array_filter(array_map(fn($r) => $r['id'] ?? null, $ciData['resolucaos'] ?? [])));
+
+                if (!empty($ciData['id'])) {
+                    $complicacaoInternamento = $internamento->complicacaoInternamentos()->where('id', $ciData['id'])->first();
+
+                    if ($complicacaoInternamento) {
+                        if ($ciData['complicacao_id']) {
+                            $complicacaoInternamento->update([
+                                'complicacao_id' => $ciData['complicacao_id'],
+                            ]);
+                            $complicacaoInternamento->resolucaos()->sync($resolvedIds);
+                            $incomingIds[] = $complicacaoInternamento->id;
+                        } else {
+                            $complicacaoInternamento->resolucaos()->detach();
+                            $complicacaoInternamento->delete();
+                        }
+                    }
+                } elseif (!empty($ciData['complicacao_id'])) {
+                    $complicacaoInternamento = $internamento->complicacaoInternamentos()->create([
+                        'complicacao_id' => $ciData['complicacao_id'],
+                    ]);
+                    $complicacaoInternamento->resolucaos()->sync($resolvedIds);
+                    $incomingIds[] = $complicacaoInternamento->id;
+                }
+            }
+
+            if (count($incomingIds) > 0) {
+                $internamento->complicacaoInternamentos()->whereNotIn('id', $incomingIds)->get()->each(function ($ci) {
+                    $ci->resolucaos()->detach();
+                    $ci->delete();
+                });
+            } else {
+                $internamento->complicacaoInternamentos()->get()->each(function ($ci) {
+                    $ci->resolucaos()->detach();
+                    $ci->delete();
+                });
+            }
+            // ---------------------------------------------------------
+            // Atualizar Clavien-Dindo do internamento
+            // ---------------------------------------------------------
+
+            $internamento->load('complicacaoInternamentos.resolucaos');
+            $maxClavien = null;
+
+            foreach ($internamento->complicacaoInternamentos as $ci) {
+
+                foreach ($ci->resolucaos()->get() as $res) {
+
+                    if (
+                        $res->clavien_dindo_id !== null &&
+                        ($maxClavien === null || $res->clavien_dindo_id > $maxClavien)
+                    ) {
+                        $maxClavien = $res->clavien_dindo_id;
+                    }
+                }
+            }
+
+            $internamento->update([
+                'clavien_dindo_id' => $maxClavien,
+            ]);
+        });
+
 
         return redirect()->back()->with('success', 'Internamento atualizado com sucesso.');
     }
