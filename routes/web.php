@@ -30,6 +30,7 @@ use App\Http\Controllers\SexoController;
 use App\Http\Controllers\TipoDeCirurgiaController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\UserRoleController;
+use App\Models\Role;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -85,7 +86,13 @@ Route::post('/internamento/importBloco', [InternamentoController::class, 'import
 
 Route::get('/admin/users', [UserRoleController::class, 'index'])->name('admin.users');
 Route::post('/admin/users/{user}/roles', [UserRoleController::class, 'updateRoles'])->name('admin.users.roles');
-Route::resource('admin/users', UserController::class)->only(['index', 'store', 'update', 'destroy']);
+Route::resource('admin/users', UserController::class)
+    ->only(['store', 'update', 'destroy'])
+    ->names([
+        'store' => 'admin.users.store',
+        'update' => 'admin.users.update',
+        'destroy' => 'admin.users.destroy',
+    ]);
 
 Route::get('/distribuicao', [DistribuicaoController::class, 'index'])->middleware(['auth']);;
 Route::get('/distribuicao/simular', [DistribuicaoController::class, 'simular'])->middleware(['auth']);;
