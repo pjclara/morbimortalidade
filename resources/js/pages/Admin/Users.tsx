@@ -1,14 +1,29 @@
 import { usePage, router } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import { Head } from '@inertiajs/react';
+import { useState } from 'react';
+import CreateOrUpdateModal from '@/components/user/CreateOrUpdateModal';
 
 export default function Users() {
     const { users, roles } = usePage().props;
+
+    const [openModal, setOpenModal] = useState(false);
+    const [selectedUser, setSelectedUser] = useState(null);
 
     const updateRoles = (userId: number, selectedRoles: string[]) => {
         router.post(`/admin/users/${userId}/roles`, {
             roles: selectedRoles,
         });
+    };
+
+    const openCreate = () => {
+        setSelectedUser(null);
+        setOpenModal(true);
+    };
+
+    const openEdit = (user: any) => {
+        setSelectedUser(user);
+        setOpenModal(true);
     };
 
     return (
@@ -17,7 +32,16 @@ export default function Users() {
 
             <div className="p-6 space-y-6">
 
-                <h1 className="text-xl font-semibold">Gestão de Roles</h1>
+                <div className="flex justify-between items-center">
+                    <h1 className="text-xl font-semibold">Gestão de Utilizadores</h1>
+
+                    <button
+                        onClick={openCreate}
+                        className="px-4 py-2 bg-green-600 text-white rounded"
+                    >
+                        Novo Utilizador
+                    </button>
+                </div>
 
                 <table className="w-full text-sm border rounded-lg">
                     <thead>
@@ -25,11 +49,12 @@ export default function Users() {
                             <th className="p-2 text-left">Nome</th>
                             <th className="p-2 text-left">Email</th>
                             <th className="p-2 text-left">Roles</th>
+                            <th className="p-2 text-left">Ações</th>
                         </tr>
                     </thead>
 
                     <tbody>
-                        {users.map((user: any) => (
+                        {users.data.map((user: any) => (
                             <tr key={user.id} className="border-b">
                                 <td className="p-2">{user.name}</td>
                                 <td className="p-2">{user.email}</td>
@@ -61,12 +86,27 @@ export default function Users() {
                                         })}
                                     </div>
                                 </td>
+
+                                <td className="p-2">
+                                    <button
+                                        onClick={() => openEdit(user)}
+                                        className="px-3 py-1 rounded bg-neutral-700 text-white"
+                                    >
+                                        Editar
+                                    </button>
+                                </td>
                             </tr>
                         ))}
                     </tbody>
                 </table>
 
             </div>
+
+            <CreateOrUpdateModal
+                open={openModal}
+                onClose={() => setOpenModal(false)}
+                user={selectedUser}
+            />
         </AppLayout>
     );
 }

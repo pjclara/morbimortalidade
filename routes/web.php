@@ -25,12 +25,16 @@ use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\ProcedimentoController;
 use App\Http\Controllers\ResolucaoController;
 use App\Http\Controllers\RoleController;
+use App\Http\Controllers\RolePermissionController;
 use App\Http\Controllers\SexoController;
 use App\Http\Controllers\TipoDeCirurgiaController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\UserRoleController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
+
+
+
 
 Route::get('/', function () {
     return Inertia::render('welcome');
@@ -70,6 +74,8 @@ Route::resource('sexos', SexoController::class);
 Route::resource('tipo_de_cirurgias', TipoDeCirurgiaController::class);
 Route::resource('users', UserController::class);
 
+Route::get('/roles', fn() => Role::all());
+
 // post route for importing internamentos
 Route::post('/internamento/import', [InternamentoController::class, 'import'])
     ->name('internamento.import');
@@ -79,8 +85,26 @@ Route::post('/internamento/importBloco', [InternamentoController::class, 'import
 
 Route::get('/admin/users', [UserRoleController::class, 'index'])->name('admin.users');
 Route::post('/admin/users/{user}/roles', [UserRoleController::class, 'updateRoles'])->name('admin.users.roles');
+Route::resource('admin/users', UserController::class)->only(['index', 'store', 'update', 'destroy']);
+
+Route::get('/distribuicao', [DistribuicaoController::class, 'index'])->middleware(['auth']);;
+Route::get('/distribuicao/simular', [DistribuicaoController::class, 'simular'])->middleware(['auth']);;
+Route::post('/distribuicao/executar', [DistribuicaoController::class, 'executar'])->middleware(['auth']);;
 
 
-Route::get('/distribuicao', [DistribuicaoController::class, 'index']);
-Route::get('/distribuicao/simular', [DistribuicaoController::class, 'simular']);
-Route::post('/distribuicao/executar', [DistribuicaoController::class, 'executar']);
+// Gestão de RBAC (roles & permissions)
+Route::get('/access-control', [RolePermissionController::class, 'index']);
+
+Route::post('/access-control/roles', [RolePermissionController::class, 'storeRole'])
+    ->middleware('permission:users.manage');
+Route::put('/access-control/roles/{role}', [RolePermissionController::class, 'updateRole'])
+    ->middleware('permission:users.manage');
+Route::delete('/access-control/roles/{role}', [RolePermissionController::class, 'destroyRole'])
+    ->middleware('permission:users.manage');
+
+Route::post('/access-control/permissions', [RolePermissionController::class, 'storePermission'])
+    ->middleware('permission:users.manage');
+Route::put('/access-control/permissions/{permission}', [RolePermissionController::class, 'updatePermission'])
+    ->middleware('permission:users.manage');
+Route::delete('/access-control/permissions/{permission}', [RolePermissionController::class, 'destroyPermission'])
+    ->middleware('permission:users.manage');

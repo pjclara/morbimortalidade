@@ -7,13 +7,23 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
+use Spatie\Permission\Models\Role;
 
 class DistribuicaoController extends Controller
 {
     public function index()
     {
+        $responsaveis = User::query()
+            ->where('ativo', true)
+            ->with('roles:id,name')
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        $perfis = Role::orderBy('name')
+            ->get(['id', 'name']);
+
         return Inertia::render('Internamento/Distribuicao', [
-            'responsaveis' => User::where('ativo', 1)->get(['id', 'name']),
+            'responsaveis' => $responsaveis,
             'resultadoInicial' => [],
             'statsInicial' => [
                 'semResponsavel' => 0,
@@ -21,127 +31,139 @@ class DistribuicaoController extends Controller
                 'semBloco' => 0,
             ],
             'logsInicial' => [],
+            'perfis' => $perfis,
         ]);
     }
 
     public function simular(Request $request)
     {
-        $de = $request->data_entrada_de;
-        $ate = $request->data_entrada_ate;
+        $validated = $request->validate([
+            'data_entrada_de' => 'required|date',
+            'data_entrada_ate' => 'required|date|after_or_equal:data_entrada_de',
+            'responsaveis' => 'required|array',
+            'responsaveis.*' => 'exists:users,id',
+        ]);
+        if ($validated) {
 
-        // Responsáveis selecionados
-        $responsaveis = User::whereIn('id', $request->responsaveis)
-            ->where('ativo', 1)
-            ->get();
 
-        // Internamentos sem responsável no período
-        $internamentos = Internamento::whereNull('responsavel_id')
-            ->whereBetween('data_entrada', [$de, $ate])
-            ->get();
+            $de = $request->data_entrada_de;
+            $ate = $request->data_entrada_ate;
 
-        // IDs dos internamentos com bloco operatório
-        $internamentosComBlocoIds = DB::table('bloco_operatorios')
-            ->pluck('internamento_id')
-            ->toArray();
+            $responsaveis = $request->responsaveis
+                ? User::whereIn('id', $request->responsaveis)->where('ativo', 1)->get()
+                : User::where('ativo', 1)->get();
 
-        // Separar internamentos
-        $comBloco = $internamentos->whereIn('id', $internamentosComBlocoIds)->values();
-        $semBloco = $internamentos->whereNotIn('id', $internamentosComBlocoIds)->values();
+            // Internamentos sem responsável no período
+            $internamentos = Internamento::whereNull('responsavel_id')
+                ->whereBetween('data_saida', [$de, $ate])
+                ->get();
 
-        // Estrutura inicial do resultado
-        $resultado = [];
-        foreach ($responsaveis as $r) {
-            $resultado[$r->id] = [
-                'id' => $r->id,
-                'nome' => $r->name,
-                'com_bloco' => 0,
-                'sem_bloco' => 0,
-                'total' => 0,
-            ];
-        }
+            // IDs dos internamentos com bloco operatório
+            $internamentosComBlocoIds = DB::table('bloco_operatorios')
+                ->pluck('internamento_id')
+                ->toArray();
 
-        // Função de distribuição proporcional
-        $distribuir = function ($grupo, $tipo) use (&$resultado, $responsaveis, $de, $ate, $internamentosComBlocoIds) {
+            // Separar internamentos
+            $comBloco = $internamentos->whereIn('id', $internamentosComBlocoIds)->values();
+            $semBloco = $internamentos->whereNotIn('id', $internamentosComBlocoIds)->values();
 
-            // Carga atual por responsável
-            $cargas = [];
+            // Estrutura inicial do resultado
+            $resultado = [];
             foreach ($responsaveis as $r) {
+                $resultado[$r->id] = [
+                    'id' => $r->id,
+                    'nome' => $r->name,
+                    'com_bloco' => 0,
+                    'sem_bloco' => 0,
+                    'total' => 0,
+                ];
+            }
 
-                $query = Internamento::where('responsavel_id', $r->id)
-                    ->whereBetween('data_entrada', [$de, $ate]);
+            // Função de distribuição proporcional
+            $distribuir = function ($grupo, $tipo) use (&$resultado, $responsaveis, $de, $ate, $internamentosComBlocoIds) {
 
-                if ($tipo === 'com') {
-                    $query->whereIn('id', $internamentosComBlocoIds);
-                } else {
-                    $query->whereNotIn('id', $internamentosComBlocoIds);
+                // Carga atual por responsável
+                $cargas = [];
+                foreach ($responsaveis as $r) {
+
+                    $query = Internamento::where('responsavel_id', $r->id)
+                        ->whereBetween('data_entrada', [$de, $ate]);
+
+                    if ($tipo === 'com') {
+                        $query->whereIn('id', $internamentosComBlocoIds);
+                    } else {
+                        $query->whereNotIn('id', $internamentosComBlocoIds);
+                    }
+
+                    $cargas[$r->id] = $query->count();
                 }
 
-                $cargas[$r->id] = $query->count();
-            }
-
-            // Pesos inversos
-            $pesos = [];
-            foreach ($cargas as $id => $carga) {
-                $pesos[$id] = 1 / ($carga + 1);
-            }
-
-            // Normalizar pesos
-            $totalPesos = array_sum($pesos);
-            foreach ($pesos as $id => $peso) {
-                $pesos[$id] = $peso / $totalPesos;
-            }
-
-            // Distribuir internamentos
-            foreach ($grupo as $internamento) {
-
-                // Escolher responsável com maior peso
-                $responsavelId = array_keys($pesos, max($pesos))[0];
-
-                // Incrementar contadores
-                if ($tipo === 'com') {
-                    $resultado[$responsavelId]['com_bloco']++;
-                } else {
-                    $resultado[$responsavelId]['sem_bloco']++;
+                // Pesos inversos
+                $pesos = [];
+                foreach ($cargas as $id => $carga) {
+                    $pesos[$id] = 1 / ($carga + 1);
                 }
 
-                $resultado[$responsavelId]['total']++;
-
-                // Atualizar carga
-                $cargas[$responsavelId]++;
-
-                // Recalcular peso
-                $pesos[$responsavelId] = 1 / ($cargas[$responsavelId] + 1);
-
-                // Renormalizar
+                // Normalizar pesos
                 $totalPesos = array_sum($pesos);
                 foreach ($pesos as $id => $peso) {
                     $pesos[$id] = $peso / $totalPesos;
                 }
-            }
-        };
 
-        // Distribuir COM bloco
-        $distribuir($comBloco, 'com');
+                // Distribuir internamentos
+                foreach ($grupo as $internamento) {
 
-        // Distribuir SEM bloco
-        $distribuir($semBloco, 'sem');
+                    // Escolher responsável com maior peso
+                    $responsavelId = array_keys($pesos, max($pesos))[0];
 
-        return Inertia::render('Internamento/Distribuicao', [
-            'responsaveis' => $responsaveis,
-            'resultadoInicial' => array_values($resultado),
-            'statsInicial' => [
-                'semResponsavel' => $internamentos->count(),
-                'comBloco' => $comBloco->count(),
-                'semBloco' => $semBloco->count(),
-            ],
-            'logsInicial' => [
-                [
-                    'id' => 1,
-                    'data' => now()->format('Y-m-d H:i'),
-                    'mensagem' => 'Simulação concluída com sucesso.',
-                ]
-            ],
-        ]);
+                    // Incrementar contadores
+                    if ($tipo === 'com') {
+                        $resultado[$responsavelId]['com_bloco']++;
+                    } else {
+                        $resultado[$responsavelId]['sem_bloco']++;
+                    }
+
+                    $resultado[$responsavelId]['total']++;
+
+                    // Atualizar carga
+                    $cargas[$responsavelId]++;
+
+                    // Recalcular peso
+                    $pesos[$responsavelId] = 1 / ($cargas[$responsavelId] + 1);
+
+                    // Renormalizar
+                    $totalPesos = array_sum($pesos);
+                    foreach ($pesos as $id => $peso) {
+                        $pesos[$id] = $peso / $totalPesos;
+                    }
+                }
+            };
+
+            // Distribuir COM bloco
+            $distribuir($comBloco, 'com');
+
+            // Distribuir SEM bloco
+            $distribuir($semBloco, 'sem');
+
+            return Inertia::render('Internamento/Distribuicao', [
+                'responsaveis' => $responsaveis,
+                'resultadoInicial' => array_values($resultado),
+                'statsInicial' => [
+                    'semResponsavel' => $internamentos->count(),
+                    'comBloco' => $comBloco->count(),
+                    'semBloco' => $semBloco->count(),
+                ],
+                'logsInicial' => [
+                    [
+                        'id' => 1,
+                        'data' => now()->format('Y-m-d H:i'),
+                        'mensagem' => 'Simulação concluída com sucesso.',
+                    ]
+                ],
+            ]);
+        } else {
+            return back()->withErrors($validated);
+        }
     }
 
     public function executar(Request $request)
@@ -149,68 +171,97 @@ class DistribuicaoController extends Controller
         $de = $request->data_entrada_de;
         $ate = $request->data_entrada_ate;
 
-        $responsaveis = User::whereIn('id', $request->responsaveis)
-            ->where('ativo', 1)
-            ->get();
+        DB::transaction(function () use ($request, $de, $ate) {
 
-        $internamentos = Internamento::whereNull('responsavel_id')
-            ->whereBetween('data_entrada', [$de, $ate])
-            ->get();
+            $responsaveis = User::whereIn('id', $request->responsaveis)
+                ->where('ativo', 1)
+                ->get();
 
-        $internamentosComBlocoIds = DB::table('bloco_operatorios')
-            ->pluck('internamento_id')
-            ->toArray();
+            if ($responsaveis->isEmpty()) {
+                return;
+            }
 
-        $comBloco = $internamentos->whereIn('id', $internamentosComBlocoIds)->values();
-        $semBloco = $internamentos->whereNotIn('id', $internamentosComBlocoIds)->values();
+            $internamentos = Internamento::whereNull('responsavel_id')
+                ->whereBetween('data_saida', [$de, $ate])
+                ->get();
 
-        $distribuirExecucao = function ($grupo, $tipo) use ($responsaveis, $de, $ate, $internamentosComBlocoIds) {
+            $internamentosComBlocoIds = DB::table('bloco_operatorios')
+                ->pluck('internamento_id');
 
-            $cargas = [];
-            foreach ($responsaveis as $r) {
+            $comBloco = $internamentos
+                ->whereIn('id', $internamentosComBlocoIds)
+                ->values();
 
-                $query = Internamento::where('responsavel_id', $r->id)
-                    ->whereBetween('data_entrada', [$de, $ate]);
+            $semBloco = $internamentos
+                ->whereNotIn('id', $internamentosComBlocoIds)
+                ->values();
 
-                if ($tipo === 'com') {
-                    $query->whereIn('id', $internamentosComBlocoIds);
-                } else {
-                    $query->whereNotIn('id', $internamentosComBlocoIds);
+            // Cargas atuais COM bloco
+            $cargasCom = Internamento::select(
+                'responsavel_id',
+                DB::raw('COUNT(*) as total')
+            )
+                ->whereNotNull('responsavel_id')
+                ->whereBetween('data_entrada', [$de, $ate])
+                ->whereIn('id', $internamentosComBlocoIds)
+                ->groupBy('responsavel_id')
+                ->pluck('total', 'responsavel_id')
+                ->toArray();
+
+            // Cargas atuais SEM bloco
+            $cargasSem = Internamento::select(
+                'responsavel_id',
+                DB::raw('COUNT(*) as total')
+            )
+                ->whereNotNull('responsavel_id')
+                ->whereBetween('data_entrada', [$de, $ate])
+                ->whereNotIn('id', $internamentosComBlocoIds)
+                ->groupBy('responsavel_id')
+                ->pluck('total', 'responsavel_id')
+                ->toArray();
+
+            $distribuir = function ($grupo, $tipo, &$cargasBase) use ($responsaveis) {
+
+                $cargas = [];
+
+                foreach ($responsaveis as $r) {
+                    $cargas[$r->id] = $cargasBase[$r->id] ?? 0;
                 }
 
-                $cargas[$r->id] = $query->count();
-            }
+                foreach ($grupo as $internamento) {
 
-            $pesos = [];
-            foreach ($cargas as $id => $carga) {
-                $pesos[$id] = 1 / ($carga + 1);
-            }
+                    // Calcular pesos
+                    $pesos = [];
 
-            $totalPesos = array_sum($pesos);
-            foreach ($pesos as $id => $peso) {
-                $pesos[$id] = $peso / $totalPesos;
-            }
+                    foreach ($cargas as $id => $carga) {
+                        $pesos[$id] = 1 / ($carga + 1);
+                    }
 
-            foreach ($grupo as $internamento) {
+                    $maiorPeso = max($pesos);
 
-                $responsavelId = array_keys($pesos, max($pesos))[0];
+                    // Responsáveis empatados
+                    $candidatos = [];
 
-                // GRAVAR NO BD
-                $internamento->responsavel_id = $responsavelId;
-                $internamento->save();
+                    foreach ($pesos as $id => $peso) {
+                        if ($peso == $maiorPeso) {
+                            $candidatos[] = $id;
+                        }
+                    }
 
-                $cargas[$responsavelId]++;
-                $pesos[$responsavelId] = 1 / ($cargas[$responsavelId] + 1);
+                    // Escolha aleatória em caso de empate
+                    $responsavelId = $candidatos[array_rand($candidatos)];
 
-                $totalPesos = array_sum($pesos);
-                foreach ($pesos as $id => $peso) {
-                    $pesos[$id] = $peso / $totalPesos;
+                    $internamento->update([
+                        'responsavel_id' => $responsavelId,
+                    ]);
+
+                    $cargas[$responsavelId]++;
                 }
-            }
-        };
+            };
 
-        $distribuirExecucao($comBloco, 'com');
-        $distribuirExecucao($semBloco, 'sem');
+            $distribuir($comBloco, 'com', $cargasCom);
+            $distribuir($semBloco, 'sem', $cargasSem);
+        });
 
         return back()->with('success', 'Distribuição aplicada com sucesso.');
     }

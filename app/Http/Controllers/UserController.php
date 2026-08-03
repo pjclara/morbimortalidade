@@ -5,52 +5,62 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-use App\Http\Requests\UserStoreRequest;
-use App\Http\Requests\UserUpdateRequest;
+use Spatie\Permission\Models\Role;
 
 class UserController extends Controller
 {
-    public function index(Request $request)
+    public function index()
     {
-        $query = User::orderBy('name');
+        $users = User::where('ativo', 1)->with('roles')->paginate(20);
+        $roles = Role::all();
+        return Inertia::render('Admin/Users', [
+            'users' => $users,
+            'roles' => $roles
+        ]);
+    }
 
-        if ($request->filled('ativo')) {
-            $query->where('ativo', $request->ativo);
-        }else{
-            $query->where('ativo', 1);
+    public function store(Request $request)
+    {
+        $data = $request->validate([
+            'name'     => 'required|string|max:255',
+            'email'    => 'required|email|unique:users,email',
+            'password' => 'required|string|min:6',
+            'roles'    => 'array',
+        ]);
+
+        $user = User::create($data);
+
+        if (!empty($data['roles'])) {
+            $user->syncRoles($data['roles']);
         }
-        return Inertia::render('Users/Index', [
-            'items' => $query->paginate(10)->withQueryString(),
+
+        return $user->load('roles');
+    }
+
+    public function update(Request $request, User $user)
+    {
+        $data = $request->validate([
+            'name'     => 'required|string|max:255',
+            'email'    => "required|email|unique:users,email,{$user->id}",
+            'password' => 'nullable|string|min:6',
         ]);
-    }
 
-    public function create()
-    {
-        return Inertia::render('Users/Create');
-    }
+        if (empty($data['password'])) {
+            unset($data['password']);
+        }
 
-    public function store(UserStoreRequest $request)
-    {
-        User::create($request->validated());
-        return redirect()->route('users.index')->with('success', 'Utilizador criado.');
-    }
+        $user->update($data);
 
-    public function edit(User $user)
-    {
-        return Inertia::render('Users/Edit', [
-            'item' => $user,
+        return back()->with('toast', [
+            'type' => 'success',
+            'title' => 'Utilizador atualizado',
+            'description' => 'O utilizador foi atualizado com sucesso.',
         ]);
-    }
-
-    public function update(UserUpdateRequest $request, User $user)
-    {
-        $user->update($request->validated());
-        return redirect()->route('users.index')->with('success', 'Utilizador atualizado.');
     }
 
     public function destroy(User $user)
     {
         $user->delete();
-        return redirect()->route('users.index')->with('success', 'Utilizador removido.');
+        return response()->noContent();
     }
 }

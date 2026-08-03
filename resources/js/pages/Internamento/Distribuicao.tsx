@@ -13,8 +13,11 @@ export default function DistribuicaoPage(props: any) {
         data_entrada_de: '',
         data_entrada_ate: '',
         tipo: 'ambos',
+        perfil: '',
         responsaveis: [] as string[],
     });
+
+    console.log('props', props);
 
     const [resultado, setResultado] = useState(props.resultadoInicial ?? []);
     const [stats, setStats] = useState(props.statsInicial ?? {});
@@ -22,9 +25,11 @@ export default function DistribuicaoPage(props: any) {
 
     const [loadingSimular, setLoadingSimular] = useState(false);
     const [loadingExecutar, setLoadingExecutar] = useState(false);
+    const [hasValidSimulation, setHasValidSimulation] = useState(false);
 
     function updateFilters(partial: any) {
         setFilters((prev) => ({ ...prev, ...partial }));
+        setHasValidSimulation(false);
     }
 
     function simularDistribuicao() {
@@ -39,11 +44,13 @@ export default function DistribuicaoPage(props: any) {
                 responsaveis: filters.responsaveis,
             },
             {
+                preserveState: true,
                 preserveScroll: true,
                 onSuccess: (page: any) => {
                     setResultado(page.props.resultadoInicial ?? []);
                     setStats(page.props.statsInicial ?? {});
                     setLogs(page.props.logsInicial ?? []);
+                    setHasValidSimulation(true);
                     setLoadingSimular(false);
                 },
                 onError: () => setLoadingSimular(false),
@@ -63,6 +70,7 @@ export default function DistribuicaoPage(props: any) {
                 responsaveis: filters.responsaveis,
             },
             {
+                preserveState: true,
                 preserveScroll: true,
                 onSuccess: () => {
                     setLoadingExecutar(false);
@@ -88,6 +96,13 @@ export default function DistribuicaoPage(props: any) {
         ],
     };
 
+    const responsaveisFiltrados = (props.responsaveis ?? []).filter((user: any) => {
+        if (!filters.perfil) {
+            return true;
+        }
+
+        return user.roles.some((role: any) => role.name === filters.perfil);
+    });
     const breadcrumbs: BreadcrumbItem[] = [
         {
             title: 'Distribuicao',
@@ -104,6 +119,28 @@ export default function DistribuicaoPage(props: any) {
                     <p className="mt-1 text-gray-600">Distribuição proporcional por carga, com ou sem bloco operatório.</p>
                 </div>
 
+                <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
+                    <h2 className="mb-4 text-lg font-semibold">Perfil</h2>
+
+                    <select
+                        value={filters.perfil}
+                        onChange={(e) =>
+                            updateFilters({
+                                perfil: e.target.value,
+                                responsaveis: [], // limpa a seleção
+                            })
+                        }
+                        className="w-full rounded-lg border-gray-300"
+                    >
+                        <option value="">Todos os perfis</option>
+
+                        {(props.perfis ?? []).map((perfil: any) => (
+                            <option key={perfil.id} value={perfil.name}>
+                                {perfil.name}
+                            </option>
+                        ))}
+                    </select>
+                </div>
                 {/* Filtros */}
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
                     <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
@@ -143,11 +180,11 @@ export default function DistribuicaoPage(props: any) {
                                     responsaveis: Array.from(e.target.selectedOptions).map((o) => o.value),
                                 })
                             }
-                            className="h-40 w-full rounded-lg border-gray-300"
+                            className="h-52 w-full rounded-lg border-gray-300"
                         >
-                            {props.responsaveis.map((r: any) => (
-                                <option key={r.id} value={String(r.id)}>
-                                    {r.name}
+                            {responsaveisFiltrados.map((user: any) => (
+                                <option key={user.id} value={String(user.id)}>
+                                    {user.name}
                                 </option>
                             ))}
                         </select>
@@ -169,7 +206,7 @@ export default function DistribuicaoPage(props: any) {
                 </div>
 
                 {/* Ações */}
-                <div className="flex gap-4">
+                <div className="flex flex-col gap-3 sm:flex-row">
                     <button
                         onClick={simularDistribuicao}
                         disabled={loadingSimular}
@@ -180,7 +217,7 @@ export default function DistribuicaoPage(props: any) {
 
                     <button
                         onClick={executarDistribuicao}
-                        disabled={loadingExecutar}
+                        disabled={loadingExecutar || !hasValidSimulation}
                         className="rounded-xl bg-green-600 px-6 py-3 font-semibold text-white shadow hover:bg-green-700 disabled:opacity-60"
                     >
                         {loadingExecutar ? 'A executar...' : 'Executar distribuição'}
