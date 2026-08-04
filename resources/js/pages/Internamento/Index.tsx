@@ -1,7 +1,7 @@
 import { PlaceholderPattern } from '@/components/ui/placeholder-pattern';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
-import { Head, router } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import { toast } from 'react-hot-toast';
 import InternamentoModal from '../../components/internamento/InternamentoModal';
@@ -144,6 +144,10 @@ export default function Index({ items, filters, responsavel_options }: Props) {
         setLoadingBloco(false);
     }
 
+    const { auth } = usePage().props as any;
+
+    const isSuperAdmin = auth.user?.roles?.includes('super-admin');
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Internamento" />
@@ -152,20 +156,22 @@ export default function Index({ items, filters, responsavel_options }: Props) {
                 <div className="mb-4 flex items-center justify-between">
                     <h1 className="text-2xl font-semibold">Internamento</h1>
                 </div>
-                <div className="space-y-4">
-                    {/* Linha 1 – Internamento */}
-                    <div className="flex justify-end">
-                        <label className="mr-2 cursor-pointer rounded-md bg-blue-600 px-3 py-2 text-white">
-                            {loadingInternamento ? 'A carregar...' : 'Importar Internamentos'}
-                            <input type="file" accept=".xlsx,.csv" className="hidden" onChange={uploadExcel} />
-                        </label>
 
-                        <label className="cursor-pointer rounded-md bg-blue-600 px-3 py-2 text-white">
-                            {loadingBloco ? 'A carregar...' : 'Importar Blocos'}
-                            <input type="file" accept=".xlsx,.csv" className="hidden" onChange={uploadExcelBloco} />
-                        </label>
+                {isSuperAdmin && (
+                    <div className="space-y-4">
+                        <div className="flex justify-end gap-2">
+                            <label className="cursor-pointer rounded-md bg-blue-600 px-3 py-2 text-white hover:bg-blue-700">
+                                {loadingInternamento ? 'A carregar...' : 'Importar Internamentos'}
+                                <input type="file" accept=".xlsx,.csv" className="hidden" onChange={uploadExcel} />
+                            </label>
+
+                            <label className="cursor-pointer rounded-md bg-blue-600 px-3 py-2 text-white hover:bg-blue-700">
+                                {loadingBloco ? 'A carregar...' : 'Importar Blocos'}
+                                <input type="file" accept=".xlsx,.csv" className="hidden" onChange={uploadExcelBloco} />
+                            </label>
+                        </div>
                     </div>
-                </div>
+                )}
 
                 {/* FILTROS AVANÇADOS */}
                 <div className="mb-4 flex flex-wrap items-end gap-4">
@@ -253,16 +259,17 @@ export default function Index({ items, filters, responsavel_options }: Props) {
                                     <th className="px-4 py-3 font-semibold">Classificação Clavien-Dindo</th>
                                     <th className="px-4 py-3 font-semibold">Responsável</th>
                                     <th className="px-4 py-3 font-semibold">Observações</th>
+                                    <th className="px-4 py-3 font-semibold"></th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-neutral-200 dark:divide-neutral-700">
                                 {items.data.map((i: any) => (
                                     <tr
                                         key={i.id}
-                                        onDoubleClick={() => openModal(i)}
                                         className={`border-1 hover:bg-neutral-50 dark:hover:bg-neutral-800 ${
                                             i.bloco_operatorios_count > 0 ? 'bg-blue-100' : 'bg-green-100'
                                         }`}
+                                        
                                     >
                                         <td className="px-4 py-2">{i.patient?.processo ?? '-'}</td>
                                         <td className="px-4 py-2">{i.data_entrada ?? '-'}</td>
@@ -278,6 +285,14 @@ export default function Index({ items, filters, responsavel_options }: Props) {
                                                 {i.observacoes}
                                             </span>
                                         </td>
+                                        <td className="px-4 py-2">
+                                            <button
+                                                onClick={() => openModal(i)}
+                                                className="rounded bg-blue-600 px-3 py-1 text-white hover:bg-blue-700"
+                                            >
+                                                Editar
+                                            </button>
+                                        </td>   
                                     </tr>
                                 ))}
                             </tbody>
@@ -322,7 +337,7 @@ export default function Index({ items, filters, responsavel_options }: Props) {
                 item={selected}
                 onClose={() => setSelected(null)}
                 onSave={(updated: any) => {
-                    updateData(updated)
+                    updateData(updated);
                 }}
             />
         </AppLayout>

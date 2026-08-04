@@ -32,7 +32,7 @@ class MenuService
             [
                 'title' => 'Distribuição',
                 'href' => '/distribuicao',
-                'icon' => 'Users',
+                'icon' => 'UserCheck',
                 'roles' => ['super_admin'],
             ],
         ];

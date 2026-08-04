@@ -18,6 +18,8 @@ use Inertia\Inertia;
 class InternamentoController extends Controller
 {
 
+
+
     public function index(Request $request)
     {
         $query = Internamento::with([
@@ -32,6 +34,13 @@ class InternamentoController extends Controller
         ])
             ->withCount('blocoOperatorios');
 
+        /* -------------------------
+        FILTRO: SE FOR INTERNO DO GERAL SÓ VE OS SEUS PACIENTES
+        --------------------------*/
+
+        if ($request->user()->hasRole('Interno do geral')) {
+            $query->where('responsavel_id', $request->user()->id);
+        }
 
         /* -------------------------
         FILTRO: PROCESSO (patient)

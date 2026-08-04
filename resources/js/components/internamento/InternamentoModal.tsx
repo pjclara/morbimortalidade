@@ -1,9 +1,14 @@
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { PlaceholderPattern } from '@/components/ui/placeholder-pattern';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
 import { router, usePage } from '@inertiajs/react';
+import { Check, ChevronsUpDown, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 
-const INITIAL_TABS = ['internamento', 'paciente', 'diagnosticos', 'destino', 'responsavel'];
+const INITIAL_TABS = ['paciente', 'internamento', 'diagnosticos'];
 
 export default function InternamentoModal({ open, onClose, item, onSave }: any) {
     const [tab, setTab] = useState('internamento');
@@ -14,6 +19,40 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
     const [searchResolucao, setSearchResolucao] = useState('');
 
     const [tabs, setTabs] = useState(INITIAL_TABS);
+    const [openComplicacao, setOpenComplicacao] = useState<number | null>(null);
+    const [openResolucaoModal, setOpenResolucaoModal] = useState(false);
+    const [currentResolucaoCi, setCurrentResolucaoCi] = useState<any>(null);
+    const [currentResolucaoSelection, setCurrentResolucaoSelection] = useState<number[]>([]);
+
+    function openResolucaoEditor(ci: any) {
+        setCurrentResolucaoCi(ci);
+        setCurrentResolucaoSelection(ci.resolucaos?.map((r: any) => Number(r.id)) ?? []);
+        setOpenResolucaoModal(true);
+    }
+
+    function closeResolucaoEditor() {
+        setOpenResolucaoModal(false);
+        setCurrentResolucaoCi(null);
+    }
+
+    function saveResolucaoEditor() {
+        if (!currentResolucaoCi) {
+            return;
+        }
+
+        const resolucaoOptions = selectFields.resolucao_id ?? [];
+
+        updateComplicacaoInternamento(currentResolucaoCi, {
+            resolucaos: currentResolucaoSelection.map((id: number) => {
+                const option = resolucaoOptions.find((opt: any) => opt.id === id || opt.id == id);
+                return {
+                    id,
+                    nome: option?.nome ?? '',
+                };
+            }),
+        });
+        closeResolucaoEditor();
+    }
 
     useEffect(() => {
         if (!item) {
@@ -25,9 +64,11 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
         setForm(item);
 
         if (item.bloco_operatorios_count > 0) {
-            setTabs((prev) => (prev.includes('clavien') ? prev : [...prev, 'clavien', 'bloco_operatorios', 'complicacoes', 'observacoes']));
+            setTabs((prev) =>
+                prev.includes('clavien') ? prev : [...prev, 'bloco_operatorios', 'complicacoes', 'clavien', 'destino', 'observacoes', 'responsavel'],
+            );
         } else {
-            setTabs((prev) => (prev.includes('clavien') ? prev : [...prev, 'observacoes']));
+            setTabs((prev) => (prev.includes('clavien') ? prev : [...prev, 'destino', 'observacoes', 'responsavel']));
         }
     }, [item]);
 
@@ -35,7 +76,7 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
 
     if (!open) return null;
 
-    const editableFields = ['observacoes', 'clavien_dindo_id', 'falecido', 'bloquear', 'data_alta'];
+    const editableFields = ['observacoes', 'falecido', 'bloquear', 'data_alta'];
     const booleanFields = ['falecido', 'bloquear'];
     const dataFields = ['data_alta'];
     const textFields = ['observacoes'];
@@ -140,7 +181,7 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
     );
 
     const filteredResolucoes = (selectFields.resolucao_id ?? []).filter((opt: any) => opt.nome.toLowerCase().includes(searchResolucao.toLowerCase()));
-    function renderField(label: string, key: string, value: any) {
+    function renderField(label: string, key: string, value: any, info?: string) {
         const isBoolean = value === 0 || value === 1 || typeof value === 'boolean';
         const isBooleanField = booleanFields.includes(key);
         const isDataField = dataFields.includes(key);
@@ -152,7 +193,6 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
         return (
             <div className="flex border-b border-neutral-300 py-2 dark:border-neutral-700">
                 <span className="w-50 text-center font-semibold">{label}</span>
-
                 {!editMode && (
                     <span className="ml-4">
                         {isBooleanField ? (value ? 'Sim' : 'Não') : (value ?? '-')}
@@ -230,6 +270,7 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
                             {fieldErrors && <span className="mt-1 w-full text-sm text-red-600">{fieldErrors}</span>}
                         </div>
                     ))}
+                {info && <span className="text-muted-foreground ml-2 px-2 py-1">{info}</span>}
             </div>
         );
     }
@@ -276,11 +317,10 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
                             <>
                                 {renderField('Processo', 'processo', item?.patient.processo)}
                                 {renderField('Entrada', 'data_entrada', item.data_entrada)}
-                                {renderField('Alta', 'data_alta', item.data_alta)}
+                                {renderField('Alta', 'data_alta', item.data_alta, 'Colocar aqui a data da alta clínica, se for o caso.')}
                                 {renderField('Saída', 'data_saida', item.data_saida)}
                                 {renderField('Dias Internamento', 'dias_internamento', item.dias_internamento)}
-                                {renderField('Falecido', 'falecido', item.falecido)}
-                                {renderField('Bloquear', 'bloquear', item.bloquear)}
+                                {renderField('Falecido', 'falecido', item.falecido, 'Colocar aqui se o doente faleceu, se for o caso.')}
                             </>
                         )}
 
@@ -351,146 +391,238 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
                                     )}
                                 </div>
 
-                                {complicacaoInternamentos.length === 0 ? (
-                                    <div className="rounded-md border border-neutral-300 bg-neutral-50 p-4 text-sm text-neutral-600 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300">
-                                        Nenhuma complicação registada.
-                                    </div>
-                                ) : (
-                                    <div className="space-y-4">
-                                        {complicacaoInternamentos.map((ci: any) => {
-                                            const ciId = getComplicacaoKey(ci);
-                                            const selectedComplicacaoId = ci.complicacao_id ?? ci.complicacao?.id ?? '';
-                                            const selectedResolucoes = ci.resolucaos?.map((r: any) => Number(r.id)) ?? [];
+                                <div className="space-y-5">
+                                    {complicacaoInternamentos.map((ci: any, index: number) => {
+                                        const ciId = getComplicacaoKey(ci);
 
-                                            return (
-                                                <div
-                                                    key={ciId}
-                                                    className="rounded-md border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-700 dark:bg-neutral-950"
-                                                >
+                                        const selectedComplicacaoId = ci.complicacao_id ?? ci.complicacao?.id ?? '';
+
+                                        const selectedResolucoes = ci.resolucaos?.map((r: any) => Number(r.id)) ?? [];
+
+                                        return (
+                                            <div
+                                                key={ciId}
+                                                className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md"
+                                            >
+                                                {/* Header */}
+
+                                                <div className="flex items-center justify-between border-b bg-slate-50 px-5 py-3">
+                                                    <div>
+                                                        <h4 className="font-semibold text-slate-800">Complicação #{index + 1}</h4>
+
+                                                        {!editMode && <p className="text-sm text-slate-500">{ci.complicacao?.nome ?? '-'}</p>}
+                                                    </div>
+
+                                                    {editMode && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => removeComplicacao(ci)}
+                                                            className="rounded-lg p-2 text-red-600 transition hover:bg-red-50"
+                                                        >
+                                                            <Trash2 className="h-5 w-5" />
+                                                        </button>
+                                                    )}
+                                                </div>
+
+                                                <div className="space-y-6 p-5">
                                                     {/* Complicação */}
-                                                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                                                        <span className="font-semibold">Complicação</span>
 
-                                                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
-                                                            {!editMode ? (
-                                                                <span>
-                                                                    {ci.complicacao?.nome ??
-                                                                        selectFields.complicacao_id?.find(
-                                                                            (opt: any) => opt.id === selectedComplicacaoId,
-                                                                        )?.nome ??
-                                                                        '-'}
-                                                                </span>
-                                                            ) : (
-                                                                <div className="flex flex-col gap-2">
-                                                                    <input
-                                                                        type="text"
-                                                                        placeholder="Pesquisar complicação..."
-                                                                        className="rounded-md border border-neutral-300 px-2 py-1 dark:border-neutral-700 dark:bg-neutral-800"
-                                                                        value={searchComplicacao}
-                                                                        onChange={(e) => setSearchComplicacao(e.target.value)}
-                                                                    />
+                                                    <div>
+                                                        <label className="mb-2 block text-sm font-medium text-slate-700">Complicação</label>
 
-                                                                    <select
-                                                                        className="w-full rounded-md border border-neutral-300 bg-white px-2 py-1 sm:w-80 dark:border-neutral-700 dark:bg-neutral-800"
-                                                                        value={String(selectedComplicacaoId ?? '')}
-                                                                        onChange={(e) => {
-                                                                            const value = Number(e.target.value);
-                                                                            updateComplicacaoInternamento(ci, { complicacao_id: value });
-                                                                        }}
-                                                                    >
-                                                                        <option value="">Selecione...</option>
-                                                                        {filteredComplicacoes.map((opt: any) => (
-                                                                            <option key={opt.id} value={String(opt.id)}>
-                                                                                {opt.nome}
-                                                                            </option>
-                                                                        ))}
-                                                                    </select>
-                                                                </div>
-                                                            )}
-
-                                                            {editMode && (
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => removeComplicacao(ci)}
-                                                                    className="rounded-md bg-red-600 px-3 py-1 text-white"
+                                                        {!editMode ? (
+                                                            <div className="rounded-lg border bg-slate-50 px-3 py-2">
+                                                                {ci.complicacao?.nome ?? '-'}
+                                                            </div>
+                                                        ) : (
+                                                            <>
+                                                                <Popover
+                                                                    open={openComplicacao === ciId}
+                                                                    onOpenChange={(open) => setOpenComplicacao(open ? ciId : null)}
                                                                 >
-                                                                    Remover
-                                                                </button>
-                                                            )}
-                                                        </div>
+                                                                    <PopoverTrigger asChild>
+                                                                        <Button variant="outline" role="combobox" className="w-full justify-between">
+                                                                            {selectedComplicacaoId
+                                                                                ? (selectFields.complicacao_id ?? []).find(
+                                                                                      (c: any) => c.id == selectedComplicacaoId,
+                                                                                  )?.nome
+                                                                                : 'Selecionar complicação'}
+                                                                            <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />
+                                                                        </Button>
+                                                                    </PopoverTrigger>
+
+                                                                    <PopoverContent className="w-full p-0">
+                                                                        <div className="space-y-2 rounded-b-md border border-slate-200 bg-white p-3 shadow-sm">
+                                                                            <input
+                                                                                type="text"
+                                                                                placeholder="Pesquisar complicação..."
+                                                                                value={searchComplicacao}
+                                                                                onChange={(e) => setSearchComplicacao(e.target.value)}
+                                                                                className="w-full rounded-md border border-neutral-300 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                                                                            />
+                                                                            <div className="max-h-60 overflow-auto">
+                                                                                {(filteredComplicacoes.length ?? 0) > 0 ? (
+                                                                                    filteredComplicacoes.map((item: any) => {
+                                                                                        const isSelected = item.id == selectedComplicacaoId;
+                                                                                        return (
+                                                                                            <button
+                                                                                                key={item.id}
+                                                                                                type="button"
+                                                                                                className={cn(
+                                                                                                    'flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm transition',
+                                                                                                    isSelected
+                                                                                                        ? 'bg-blue-50 text-blue-700'
+                                                                                                        : 'hover:bg-slate-100',
+                                                                                                )}
+                                                                                                onClick={() => {
+                                                                                                    updateComplicacaoInternamento(ci, {
+                                                                                                        complicacao_id: item.id,
+                                                                                                    });
+                                                                                                    setOpenComplicacao(null);
+                                                                                                }}
+                                                                                            >
+                                                                                                <span>{item.nome}</span>
+                                                                                                <Check
+                                                                                                    className={cn(
+                                                                                                        'h-4 w-4',
+                                                                                                        isSelected ? 'opacity-100' : 'opacity-0',
+                                                                                                    )}
+                                                                                                />
+                                                                                            </button>
+                                                                                        );
+                                                                                    })
+                                                                                ) : (
+                                                                                    <div className="rounded-md bg-slate-50 px-3 py-2 text-sm text-slate-500">
+                                                                                        Nenhuma complicação encontrada.
+                                                                                    </div>
+                                                                                )}
+                                                                            </div>
+                                                                        </div>
+                                                                    </PopoverContent>
+                                                                </Popover>
+                                                            </>
+                                                        )}
                                                     </div>
 
                                                     {/* Resoluções */}
-                                                    <div className="mt-3 flex flex-col gap-2">
-                                                        <span className="font-semibold">Resoluções</span>
+
+                                                    <div>
+                                                        <label className="mb-2 block text-sm font-medium text-slate-700">Resoluções</label>
 
                                                         {!editMode ? (
-                                                            <span>
-                                                                {ci.resolucaos?.length
-                                                                    ? ci.resolucaos
-                                                                          .map(
-                                                                              (r: any) =>
-                                                                                  r.nome ??
-                                                                                  selectFields.resolucao_id?.find((opt: any) => opt.id === r.id)
-                                                                                      ?.nome,
-                                                                          )
-                                                                          .filter(Boolean)
-                                                                    : '-'}
-                                                            </span>
-                                                        ) : (
-                                                            <div className="flex flex-col gap-2">
-                                                                {/* Pesquisa (opcional) */}
-                                                                <input
-                                                                    type="text"
-                                                                    placeholder="Pesquisar resolução..."
-                                                                    className="rounded-md border border-neutral-300 px-2 py-1 dark:border-neutral-700 dark:bg-neutral-800"
-                                                                    value={searchResolucao}
-                                                                    onChange={(e) => setSearchResolucao(e.target.value)}
-                                                                />
-
-                                                                {/* Checkboxes em duas colunas */}
-                                                                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                                                                    {filteredResolucoes.map((opt: any) => {
-                                                                        const checked = selectedResolucoes.includes(opt.id);
-
-                                                                        return (
-                                                                            <label key={opt.id} className="flex items-center gap-2">
-                                                                                <input
-                                                                                    type="checkbox"
-                                                                                    checked={checked}
-                                                                                    onChange={(e) => {
-                                                                                        let updated;
-
-                                                                                        if (e.target.checked) {
-                                                                                            updated = [...selectedResolucoes, opt.id];
-                                                                                        } else {
-                                                                                            updated = selectedResolucoes.filter(
-                                                                                                (id) => id !== opt.id,
-                                                                                            );
-                                                                                        }
-
-                                                                                        updateComplicacaoInternamento(ci, {
-                                                                                            resolucaos: updated.map((id) => ({ id })),
-                                                                                        });
-                                                                                    }}
-                                                                                    className="h-4 w-4"
-                                                                                />
-                                                                                <span>{opt.nome}</span>
-                                                                            </label>
-                                                                        );
-                                                                    })}
-                                                                </div>
+                                                            <div className="flex flex-wrap gap-2">
+                                                                {ci.resolucaos?.length ? (
+                                                                    ci.resolucaos.map((r: any) => (
+                                                                        <span
+                                                                            key={r.id}
+                                                                            className="rounded-full bg-emerald-100 px-3 py-1 text-sm text-emerald-700"
+                                                                        >
+                                                                            {r.nome}
+                                                                        </span>
+                                                                    ))
+                                                                ) : (
+                                                                    <span className="text-slate-500">Nenhuma resolução</span>
+                                                                )}
                                                             </div>
+                                                        ) : (
+                                                            <>
+                                                                <div className="flex flex-wrap items-center gap-3">
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => openResolucaoEditor(ci)}
+                                                                        className="rounded-md border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-700 transition hover:border-slate-400 hover:bg-slate-100"
+                                                                    >
+                                                                        Editar Resoluções
+                                                                    </button>
+
+                                                                    <div className="flex flex-wrap gap-2">
+                                                                        {ci.resolucaos?.length ? (
+                                                                            ci.resolucaos.map((r: any) => (
+                                                                                <span
+                                                                                    key={r.id}
+                                                                                    className="rounded-full bg-emerald-100 px-3 py-1 text-sm text-emerald-700"
+                                                                                >
+                                                                                    {r.nome}
+                                                                                </span>
+                                                                            ))
+                                                                        ) : (
+                                                                            <span className="text-slate-500">Nenhuma resolução</span>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            </>
                                                         )}
                                                     </div>
                                                 </div>
-                                            );
-                                        })}
-                                    </div>
-                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
                             </>
                         )}
                     </div>
+
+                    <Dialog open={openResolucaoModal} onOpenChange={setOpenResolucaoModal}>
+                        <DialogContent className="max-w-4xl">
+                            {' '}
+                            {/* modal mais largo */}
+                            <DialogHeader>
+                                <DialogTitle className="text-lg">Editar Resoluções</DialogTitle>
+                                <DialogDescription className="text-sm">Selecione as resoluções aplicáveis para esta complicação.</DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-4 text-sm">
+                                {' '}
+                                {/* letra mais pequena */}
+                                <input
+                                    type="text"
+                                    placeholder="Pesquisar resolução..."
+                                    value={searchResolucao}
+                                    onChange={(e) => setSearchResolucao(e.target.value)}
+                                    className="w-full rounded-md border border-neutral-300 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                                />
+                                <div className="max-h-[55vh] overflow-auto">
+                                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                                        {filteredResolucoes.map((opt: any) => {
+                                            const checked = currentResolucaoSelection.includes(opt.id);
+                                            return (
+                                                <label
+                                                    key={opt.id}
+                                                    className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 text-xs transition ${
+                                                        checked ? 'border-emerald-500 bg-emerald-50' : 'hover:bg-slate-50'
+                                                    }`}
+                                                >
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={checked}
+                                                        onChange={(e) => {
+                                                            const next = e.target.checked
+                                                                ? [...currentResolucaoSelection, opt.id]
+                                                                : currentResolucaoSelection.filter((id) => id !== opt.id);
+                                                            setCurrentResolucaoSelection(next);
+                                                        }}
+                                                    />
+                                                    <span>{opt.nome}</span>
+                                                </label>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            </div>
+                            <DialogFooter className="mt-4 flex justify-end gap-2">
+                                <DialogClose asChild>
+                                    <button
+                                        type="button"
+                                        className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"
+                                    >
+                                        Cancelar
+                                    </button>
+                                </DialogClose>
+                                <button type="button" onClick={saveResolucaoEditor} className="rounded-md bg-blue-600 px-4 py-2 text-sm text-white">
+                                    Guardar
+                                </button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
 
                     {editMode && (
                         <div className="flex justify-end">
