@@ -370,8 +370,8 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
                                 <h3 className="text-lg font-semibold">Diagnósticos</h3>
                                 <ul className="list-disc pl-5">
                                     {item.diagnosticos?.map((di: any) => (
-                                        <li key={di.id} className={di.principal ? 'font-bold text-green-600' : ''}>
-                                            {di.nome}
+                                        <li key={di.id} className={di.pivot?.principal ? 'font-bold text-green-600' : ''}>
+                                            {di.nome} {di.pivot?.principal && <span className="text-sm text-green-600">(Principal)</span>}
                                         </li>
                                     ))}
                                 </ul>

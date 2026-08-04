@@ -59,7 +59,7 @@ class Internamento extends Model
 
     public function diagnosticos()
     {
-        return $this->belongsToMany(Diagnostico::class);
+        return $this->belongsToMany(Diagnostico::class)->withPivot('principal');
     }
     
 }
