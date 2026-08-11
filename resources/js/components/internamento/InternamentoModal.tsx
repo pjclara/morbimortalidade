@@ -76,8 +76,8 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
 
     if (!open) return null;
 
-    const editableFields = ['observacoes', 'falecido', 'bloquear', 'data_alta'];
-    const booleanFields = ['falecido', 'bloquear'];
+    const editableFields = ['observacoes', 'mortalidade_esperada', 'bloquear', 'data_alta'];
+    const booleanFields = ['mortalidade_esperada','falecido', 'bloquear'];
     const dataFields = ['data_alta'];
     const textFields = ['observacoes'];
 
@@ -202,7 +202,9 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
 
                 {editMode &&
                     (!isEditable ? (
-                        <span className="ml-4 opacity-70">{String(value)}</span>
+                        <span className="ml-4 opacity-70">
+                            {isBooleanField ? (value ? 'Sim' : 'Não') : (value ?? '-')}
+                        </span>
                     ) : isBoolean ? (
                         <div>
                             <div className="flex w-full flex-col">
@@ -320,7 +322,8 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
                                 {renderField('Alta', 'data_alta', item.data_alta, 'Colocar aqui a data da alta clínica, se for o caso.')}
                                 {renderField('Saída', 'data_saida', item.data_saida)}
                                 {renderField('Dias Internamento', 'dias_internamento', item.dias_internamento)}
-                                {renderField('Falecido', 'falecido', item.falecido, 'Colocar aqui se o doente faleceu, se for o caso.')}
+                                {renderField('Falecido', 'falecido', item.falecido)}
+                                {item.falecido ? renderField('Mortalidade Esperada', 'mortalidade_esperada', item.mortalidade_esperada) : null}               
                             </>
                         )}
 
