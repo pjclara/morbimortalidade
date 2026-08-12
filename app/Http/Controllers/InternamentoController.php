@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\ClavienDindo;
 use App\Models\Complicacao;
 use App\Models\Destino;
+use App\Models\Diagnostico;
 use App\Models\Internamento;
 use App\Models\Origem;
 use App\Models\Resolucao;
@@ -339,5 +340,24 @@ class InternamentoController extends Controller
             'imported' => $result['imported'],
             'importErrors' => $result['errors'],
         ]);
+    }
+
+
+    public function setPrincipal(Internamento $registo, Diagnostico $diagnostico)
+    {
+
+        // garantir que o diagnóstico pertence ao registo
+        $cirurgia = $registo->diagnosticoInternamentos()
+            ->where('diagnostico_id', $diagnostico->id)
+            ->firstOrFail();
+
+        // remover principal de todos
+        $registo->diagnosticoInternamentos()->update(['principal' => false]);
+
+        // definir o novo principal
+        $cirurgia['principal'] = true;
+        $cirurgia->save();
+
+        return back()->with('success', 'Diagnóstico principal atualizado.');
     }
 }

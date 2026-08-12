@@ -96,6 +96,11 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/distribuicao', [DistribuicaoController::class, 'index'])->middleware(['auth']);;
     Route::get('/distribuicao/simular', [DistribuicaoController::class, 'simular'])->middleware(['auth']);;
     Route::post('/distribuicao/executar', [DistribuicaoController::class, 'executar'])->middleware(['auth']);;
+
+    Route::post(
+        'registos-cirurgicos/{registo}/diagnosticos/{diagnostico}/principal',
+        [InternamentoController::class, 'setPrincipal']
+    );
 });
 
 

@@ -9,6 +9,7 @@ class DiagnosticoInternamento extends Model
     protected $table = 'diagnostico_internamento';
     protected $fillable = ['descricao', 'diagnostico_id', 'internamento_id', 'principal'];
 
+    public $timestamps = false;
     //
 
     public function diagnostico()

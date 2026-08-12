@@ -255,7 +255,8 @@ export default function Index({ items, filters, responsavel_options }: Props) {
                                     <th className="px-4 py-3 font-semibold">Entrada</th>
                                     <th className="px-4 py-3 font-semibold">Saída</th>
                                     <th className="px-4 py-3 font-semibold">Destino</th>
-                                    <th className="px-4 py-3 font-semibold">Dias de Internamento</th>
+                                    <th className="px-4 py-3 font-semibold">Diagnóstico (nº)</th>
+                                    <th className="px-4 py-3 font-semibold">Diagnóstico Principal</th>
                                     <th className="px-4 py-3 font-semibold">Classificação Clavien-Dindo</th>
                                     <th className="px-4 py-3 font-semibold">Responsável</th>
                                     <th className="px-4 py-3 font-semibold">Observações</th>
@@ -275,7 +276,10 @@ export default function Index({ items, filters, responsavel_options }: Props) {
                                         <td className="px-4 py-2">{i.data_entrada ?? '-'}</td>
                                         <td className="px-4 py-2">{i.data_saida ?? '-'}</td>
                                         <td className="px-4 py-2">{i.destino?.nome ?? '-'}</td>
-                                        <td className="px-4 py-2">{i.dias_internamento ?? '-'}</td>
+                                        <td className="px-4 py-2">{i.diagnosticos?.length ?? '-'}</td>
+                                        <td className="px-4 py-2">
+                                            {i.diagnosticos?.find((d: any) => d.pivot?.principal)?.nome ?? '-'}
+                                        </td>
                                         <td className="px-4 py-2">{i.clavien_dindo?.nome ?? '-'}</td>
                                         <td className="px-4 py-2">{i.responsavel?.name ?? '-'}</td>
                                         <td className="group relative px-4 py-2">

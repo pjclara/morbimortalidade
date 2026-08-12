@@ -76,8 +76,8 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
 
     if (!open) return null;
 
-    const editableFields = ['observacoes', 'mortalidade_esperada', 'bloquear', 'data_alta'];
-    const booleanFields = ['mortalidade_esperada','falecido', 'bloquear'];
+    const editableFields = ['observacoes', 'mortalidade_esperada', 'bloquear', 'data_alta', 'principal'];
+    const booleanFields = ['mortalidade_esperada', 'falecido', 'bloquear', 'principal'];
     const dataFields = ['data_alta'];
     const textFields = ['observacoes'];
 
@@ -202,9 +202,7 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
 
                 {editMode &&
                     (!isEditable ? (
-                        <span className="ml-4 opacity-70">
-                            {isBooleanField ? (value ? 'Sim' : 'Não') : (value ?? '-')}
-                        </span>
+                        <span className="ml-4 opacity-70">{isBooleanField ? (value ? 'Sim' : 'Não') : (value ?? '-')}</span>
                     ) : isBoolean ? (
                         <div>
                             <div className="flex w-full flex-col">
@@ -277,6 +275,28 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
         );
     }
 
+    const togglePrincipal = async (diagnosticoId: number) => {
+        await router.post(
+            `/registos-cirurgicos/${item.id}/diagnosticos/${diagnosticoId}/principal`,
+            {},
+            {
+                preserveScroll: true,
+                preserveState: true,
+                onSuccess: () => {
+                    toast.success('Diagnóstico principal atualizado com sucesso!');
+                    if (onSave)
+                        onSave({
+                            ...form,
+                            diagnosticos: form.diagnosticos.map((d: any) => ({ ...d, pivot: { ...d.pivot, principal: d.id === diagnosticoId } })),
+                        });
+                },
+                onError: () => {
+                    toast.error('Erro ao atualizar diagnóstico principal.');
+                },
+            },
+        );
+    };
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
             <div className="relative h-[60vh] w-[80vw] overflow-y-auto rounded-xl border bg-white p-6 dark:bg-neutral-900">
@@ -323,7 +343,7 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
                                 {renderField('Saída', 'data_saida', item.data_saida)}
                                 {renderField('Dias Internamento', 'dias_internamento', item.dias_internamento)}
                                 {renderField('Falecido', 'falecido', item.falecido)}
-                                {item.falecido ? renderField('Mortalidade Esperada', 'mortalidade_esperada', item.mortalidade_esperada) : null}               
+                                {item.falecido ? renderField('Mortalidade Esperada', 'mortalidade_esperada', item.mortalidade_esperada) : null}
                             </>
                         )}
 
@@ -371,12 +391,25 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
                         {tab === 'diagnosticos' && (
                             <>
                                 <h3 className="text-lg font-semibold">Diagnósticos</h3>
-                                <ul className="list-disc pl-5">
-                                    {item.diagnosticos?.map((di: any) => (
-                                        <li key={di.id} className={di.pivot?.principal ? 'font-bold text-green-600' : ''}>
-                                            {di.nome} {di.pivot?.principal && <span className="text-sm text-green-600">(Principal)</span>}
-                                        </li>
-                                    ))}
+
+                                <ul className="list-disc space-y-1 pl-5">
+                                    {item.diagnosticos?.map((di: any) => {
+                                        return (
+                                            <li
+                                                key={di.id}
+                                                onClick={() => togglePrincipal(di.id)}
+                                                className={`cursor-pointer ${di.pivot?.principal ? 'font-bold text-green-600' : ''}`}
+                                            >
+                                                <div className="flex items-center gap-2">
+                                                    {renderField('Diagnóstico', 'diagnostico', di.nome)}
+
+                                                    {di.pivot?.principal && (
+                                                        <span className="rounded bg-green-100 px-2 py-1 text-xs text-green-700">Principal</span>
+                                                    )}
+                                                </div>
+                                            </li>
+                                        );
+                                    })}
                                 </ul>
                             </>
                         )}
