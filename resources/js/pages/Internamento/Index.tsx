@@ -78,7 +78,15 @@ export default function Index({ items, filters, responsavel_options }: Props) {
 
     function updateData(data: any) {
         setSelected(data);
-        router.put(`/internamentos/${data.id}`, data, {
+
+        const targetId = data?.id;
+        if (!targetId) {
+            console.error('updateData called without id', data);
+            toast.error('Não foi possível actualizar: identificador em falta.');
+            return;
+        }
+
+        router.put(`/internamentos/${targetId}`, data, {
             preserveState: true,
             preserveScroll: true,
         });

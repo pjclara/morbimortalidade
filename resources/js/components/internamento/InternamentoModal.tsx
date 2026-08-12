@@ -5,8 +5,9 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { cn } from '@/lib/utils';
 import { router, usePage } from '@inertiajs/react';
 import { Check, ChevronsUpDown, Trash2 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import toast from 'react-hot-toast';
+import ClickableLoadingItem from '../ClickableLoadingItem';
 
 const INITIAL_TABS = ['paciente', 'internamento', 'diagnosticos'];
 
@@ -18,11 +19,11 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
     const [searchComplicacao, setSearchComplicacao] = useState('');
     const [searchResolucao, setSearchResolucao] = useState('');
 
-    const [tabs, setTabs] = useState(INITIAL_TABS);
     const [openComplicacao, setOpenComplicacao] = useState<number | null>(null);
     const [openResolucaoModal, setOpenResolucaoModal] = useState(false);
     const [currentResolucaoCi, setCurrentResolucaoCi] = useState<any>(null);
     const [currentResolucaoSelection, setCurrentResolucaoSelection] = useState<number[]>([]);
+    const [loadingId, setLoadingId] = useState<number | null>(null);
 
     function openResolucaoEditor(ci: any) {
         setCurrentResolucaoCi(ci);
@@ -54,23 +55,13 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
         closeResolucaoEditor();
     }
 
-    useEffect(() => {
-        if (!item) {
-            setForm({});
-            setTabs([...INITIAL_TABS]); // força novo array
-            return;
+    const [tabs, setTabs] = useState(() => {
+        if (item?.bloco_operatorios_count > 0) {
+            return [...INITIAL_TABS, 'bloco_operatorios', 'complicacoes', 'clavien', 'destino', 'observacoes', 'responsavel'];
         }
 
-        setForm(item);
-
-        if (item.bloco_operatorios_count > 0) {
-            setTabs((prev) =>
-                prev.includes('clavien') ? prev : [...prev, 'bloco_operatorios', 'complicacoes', 'clavien', 'destino', 'observacoes', 'responsavel'],
-            );
-        } else {
-            setTabs((prev) => (prev.includes('clavien') ? prev : [...prev, 'destino', 'observacoes', 'responsavel']));
-        }
-    }, [item]);
+        return [...INITIAL_TABS, 'destino', 'observacoes', 'responsavel'];
+    });
 
     const pageProps: any = usePage().props;
 
@@ -158,7 +149,15 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
             })),
         };
 
-        router.put(`/internamentos/${form.id}`, payload, {
+        const targetId = form.id ?? item?.id;
+
+        if (!targetId) {
+            console.error('Cannot save internamento: missing id on form and item', { form, item });
+            toast.error('Não foi possível guardar: identificador do internamento em falta.');
+            return;
+        }
+
+        router.put(`/internamentos/${targetId}`, payload, {
             preserveState: true,
             preserveScroll: true,
 
@@ -172,7 +171,16 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
                 setEditMode(false);
                 toast.success('Internamento atualizado com sucesso!');
 
-                if (onSave) onSave(payload); // ✔️ devolve dados reais
+                if (typeof onSave === 'function') {
+                        try {
+                            // garantir que o id está presente no payload para o caller
+                            const payloadWithId = { id: form.id ?? item?.id, ...payload };
+                            onSave(payloadWithId); // ✔️ devolve dados reais
+                        } catch (e) {
+                        console.error('onSave callback error (save):', e);
+                        toast.error('Erro interno ao notificar atualizações.');
+                    }
+                }
             },
         });
     }
@@ -276,22 +284,53 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
     }
 
     const togglePrincipal = async (diagnosticoId: number) => {
+        setLoadingId(diagnosticoId);
+
         await router.post(
             `/registos-cirurgicos/${item.id}/diagnosticos/${diagnosticoId}/principal`,
             {},
             {
                 preserveScroll: true,
                 preserveState: true,
+
                 onSuccess: () => {
                     toast.success('Diagnóstico principal atualizado com sucesso!');
-                    if (onSave)
-                        onSave({
-                            ...form,
-                            diagnosticos: form.diagnosticos.map((d: any) => ({ ...d, pivot: { ...d.pivot, principal: d.id === diagnosticoId } })),
-                        });
+
+                    if (typeof onSave === 'function') {
+                        try {
+                            // Defensivamente garantir que temos um array antes de mapear
+                            const sourceDiagnosticos = Array.isArray(form?.diagnosticos)
+                                ? form!.diagnosticos
+                                : Array.isArray(item?.diagnosticos)
+                                ? item!.diagnosticos
+                                : [];
+
+                            const updatedDiagnosticos = sourceDiagnosticos.map((d: any) => ({
+                                ...d,
+                                pivot: {
+                                    ...d?.pivot,
+                                    principal: d.id === diagnosticoId,
+                                },
+                            }));
+
+                            const payloadWithId = { id: form.id ?? item?.id, ...form, diagnosticos: updatedDiagnosticos };
+
+                            onSave(payloadWithId);
+                        } catch (e) {
+                            console.error('onSave callback error (togglePrincipal):', e);
+                            toast.error('Erro interno ao processar atualização do diagnóstico.');
+                        }
+                    }
+
+                    router.reload({ only: ['item'] });
                 },
+
                 onError: () => {
                     toast.error('Erro ao atualizar diagnóstico principal.');
+                },
+
+                onFinish: () => {
+                    setLoadingId(null);
                 },
             },
         );
@@ -393,23 +432,17 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
                                 <h3 className="text-lg font-semibold">Diagnósticos</h3>
 
                                 <ul className="list-disc space-y-1 pl-5">
-                                    {item.diagnosticos?.map((di: any) => {
-                                        return (
-                                            <li
-                                                key={di.id}
-                                                onClick={() => togglePrincipal(di.id)}
-                                                className={`cursor-pointer ${di.pivot?.principal ? 'font-bold text-green-600' : ''}`}
-                                            >
-                                                <div className="flex items-center gap-2">
-                                                    {renderField('Diagnóstico', 'diagnostico', di.nome)}
-
-                                                    {di.pivot?.principal && (
-                                                        <span className="rounded bg-green-100 px-2 py-1 text-xs text-green-700">Principal</span>
-                                                    )}
-                                                </div>
-                                            </li>
-                                        );
-                                    })}
+                                    {item.diagnosticos?.map((di: any) => (
+                                        <ClickableLoadingItem
+                                            key={di.id}
+                                            id={di.id}
+                                            isPrincipal={di.pivot?.principal}
+                                            isLoading={loadingId === di.id}
+                                            onClick={togglePrincipal}
+                                        >
+                                            {renderField('Diagnóstico', 'diagnostico', di.nome)}
+                                        </ClickableLoadingItem>
+                                    ))}
                                 </ul>
                             </>
                         )}
