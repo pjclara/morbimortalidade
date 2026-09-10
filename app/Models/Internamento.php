@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Internamento extends Model
 {
-    protected $fillable = ['bloquear', 'clavien_dindo_id', 'data_alta', 'data_entrada', 'data_saida', 'destino_id', 'dias_internamento', 'episodio', 'equipa_id', 'falecido', 'mortalidade_esperada', 'observacoes', 'origem_id', 'patient_id', 'responsavel_id'];
+    protected $fillable = ['bloquear', 'clavien_dindo_id', 'data_alta', 'data_entrada', 'data_saida', 'destino_id', 'dias_internamento', 'episodio', 'equipa_id', 'falecido', 'falecido_apos_alta', 'mortalidade_esperada', 'observacoes', 'origem_id', 'patient_id', 'responsavel_id'];
 
     //
 

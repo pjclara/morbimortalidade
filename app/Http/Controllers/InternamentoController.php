@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ClavienDindo;
 use App\Models\Complicacao;
+use App\Models\ComplicacaoInternamento;
 use App\Models\Destino;
 use App\Models\Diagnostico;
 use App\Models\Internamento;
@@ -113,6 +114,24 @@ class InternamentoController extends Controller
             $query->where('falecido', $request->falecido);
         }
 
+        /* -------------------------
+        FILTRO: FALECIDO APÓS A ALTA (boolean)
+        --------------------------*/
+        if ($request->filled('falecido_apos_alta')) {
+            $query->where('falecido_apos_alta', $request->falecido_apos_alta);
+        }
+
+        /* -------------------------
+        FILTRO: COM/SEM BLOCO OPERATÓRIO
+        --------------------------*/
+        if ($request->filled('bloco_operatorio')) {
+            if ($request->bloco_operatorio === '1') {
+                $query->has('blocoOperatorios');
+            } elseif ($request->bloco_operatorio === '0') {
+                $query->doesntHave('blocoOperatorios');
+            }
+        }
+
 
 
         /* -------------------------
@@ -135,7 +154,9 @@ class InternamentoController extends Controller
             'origem_id',
             'responsavel_id',
             'clavien_dindo_id',
-            'falecido'
+            'falecido',
+            'falecido_apos_alta',
+            'bloco_operatorio',
         ]);
 
         // filtros dinâmicos (ex: datas, tipo_filtro, bloco, etc.)
@@ -217,10 +238,13 @@ class InternamentoController extends Controller
             'responsavel_id' => 'nullable|exists:users,id',
             'clavien_dindo_id' => 'nullable|exists:clavien_dindos,id',
             'falecido' => 'nullable|boolean',
+            'falecido_apos_alta' => 'nullable|boolean',
+            'mortalidade_esperada' => 'nullable|boolean',
             'observacoes' => 'nullable|string|max:1000',
             'complicacao_internamentos' => 'nullable|array',
             'complicacao_internamentos.*.id' => 'nullable|exists:complicacao_internamento,id',
             'complicacao_internamentos.*.complicacao_id' => 'nullable|exists:complicacaos,id',
+            'complicacao_internamentos.*.momento' => ['nullable', Rule::in(ComplicacaoInternamento::MOMENTO_OPTIONS)],
             'complicacao_internamentos.*.resolucaos' => 'nullable|array',
             'complicacao_internamentos.*.resolucaos.*.id' => 'nullable|exists:resolucaos,id',
         ]);
@@ -243,6 +267,7 @@ class InternamentoController extends Controller
                         if ($ciData['complicacao_id']) {
                             $complicacaoInternamento->update([
                                 'complicacao_id' => $ciData['complicacao_id'],
+                                'momento' => $ciData['momento'] ?? null,
                             ]);
                             $complicacaoInternamento->resolucaos()->sync($resolvedIds);
                             $incomingIds[] = $complicacaoInternamento->id;
@@ -254,6 +279,7 @@ class InternamentoController extends Controller
                 } elseif (!empty($ciData['complicacao_id'])) {
                     $complicacaoInternamento = $internamento->complicacaoInternamentos()->create([
                         'complicacao_id' => $ciData['complicacao_id'],
+                        'momento' => $ciData['momento'] ?? null,
                     ]);
                     $complicacaoInternamento->resolucaos()->sync($resolvedIds);
                     $incomingIds[] = $complicacaoInternamento->id;

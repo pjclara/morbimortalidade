@@ -6,7 +6,13 @@ use Illuminate\Database\Eloquent\Model;
 
 class ComplicacaoInternamento extends Model
 {
-    protected $fillable = ['complicacao_id', 'internamento_id', 'resolucaos'];
+    /**
+     * Valores aceites para `momento`: quando a complicação surgiu em
+     * relação à data de alta.
+     */
+    public const MOMENTO_OPTIONS = ['antes_alta', 'ate_30_dias', '31_90_dias', 'mais_90_dias'];
+
+    protected $fillable = ['complicacao_id', 'internamento_id', 'resolucaos', 'momento'];
 
     protected $table = 'complicacao_internamento';
 
