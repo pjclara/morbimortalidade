@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\BlocoOperatorio;
 use App\Models\ClavienDindo;
 use App\Models\Complicacao;
 use App\Models\ComplicacaoInternamento;
@@ -10,6 +11,7 @@ use App\Models\Diagnostico;
 use App\Models\Internamento;
 use App\Models\Origem;
 use App\Models\Resolucao;
+use App\Models\TipoDeCirurgia;
 use App\Models\User;
 use App\Services\BlocoOperatorioImportService;
 use Illuminate\Http\Request;
@@ -165,7 +167,6 @@ class InternamentoController extends Controller
         $complicacoesList = Complicacao::orderBy('nome', 'asc')->pluck('id', 'nome');
         $resolucoesList = Resolucao::orderBy('nome', 'asc')->pluck('id', 'nome');
 
-
         return Inertia::render('Internamento/Index', [
             'items' => $internamentos->through(fn($i) => [
                 ...$i->toArray(),
@@ -184,6 +185,50 @@ class InternamentoController extends Controller
             'responsavel_options' => $responsavelOptions,
             'clavien_options' => $clavienOptions,
 
+        ]);
+    }
+
+    /**
+     * Página à parte: doentes operados em ambulatório (bloco_operatorios com ambulatorio = 'S').
+     */
+    public function ambulatorio(Request $request)
+    {
+        $query = BlocoOperatorio::with(['tipoDeCirurgia', 'blocoOperatorioProcedimentos'])
+            ->where('ambulatorio', 'S');
+
+        if ($request->filled('processo')) {
+            $query->whereHas('internamento.patient', function ($q) use ($request) {
+                $q->where('processo', 'like', "%{$request->processo}%");
+            });
+        }
+
+        $de = $request->input('data_de');
+        $ate = $request->input('data_ate');
+
+        if ($de && $ate) {
+            if ($de > $ate) {
+                [$de, $ate] = [$ate, $de];
+            }
+            $query->whereBetween('data_intervencao', [$de, $ate]);
+        }
+
+        if ($request->filled('tipo_de_cirurgia_id')) {
+            $query->where('tipo_de_cirurgia_id', $request->tipo_de_cirurgia_id);
+        }
+
+        $items = $query
+            ->orderByDesc('data_intervencao')
+            ->paginate(20)
+            ->withQueryString();
+
+        $filters = $request->only(['processo', 'data_de', 'data_ate', 'tipo_de_cirurgia_id']);
+
+        $tipoDeCirurgiaOptions = TipoDeCirurgia::orderBy('nome', 'asc')->pluck('id', 'nome');
+
+        return Inertia::render('Internamento/Ambulatorio', [
+            'items' => $items,
+            'filters' => $filters,
+            'tipo_de_cirurgia_options' => $tipoDeCirurgiaOptions,
         ]);
     }
 

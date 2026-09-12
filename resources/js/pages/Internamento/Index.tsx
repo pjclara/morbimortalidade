@@ -1,6 +1,6 @@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
-import { Head, router, usePage } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import { toast } from 'react-hot-toast';
 import InternamentoModal from '../../components/internamento/InternamentoModal';
@@ -202,25 +202,33 @@ export default function Index({ items, filters, responsavel_options }: Props) {
                         </p>
                     </div>
 
-                    {isSuperAdmin && (
-                        <div className="flex gap-2">
-                            <label
-                                className="cursor-pointer rounded-[4px] border px-3 py-1.5 text-sm font-medium transition hover:bg-[#E3EFEA]"
-                                style={{ borderColor: CLINICAL, color: CLINICAL }}
-                            >
-                                {loadingInternamento ? 'A carregar…' : 'Importar internamentos'}
-                                <input type="file" accept=".xlsx,.csv" className="hidden" onChange={uploadExcel} />
-                            </label>
+                    <div className="flex items-center gap-3">
+                        <Link
+                            href="/internamento/ambulatorio"
+                            className="rounded-[4px] border px-3 py-1.5 text-sm font-medium transition hover:bg-[#E3EFEA]"
+                            style={{ borderColor: CLINICAL, color: CLINICAL }}
+                        >
+                            Ambulatório
+                        </Link>
 
-                            <label
-                                className="cursor-pointer rounded-[4px] border px-3 py-1.5 text-sm font-medium transition hover:bg-[#E3EFEA]"
-                                style={{ borderColor: CLINICAL, color: CLINICAL }}
-                            >
-                                {loadingBloco ? 'A carregar…' : 'Importar blocos'}
-                                <input type="file" accept=".xlsx,.csv" className="hidden" onChange={uploadExcelBloco} />
-                            </label>
-                        </div>
-                    )}
+                            <div className="flex gap-2">
+                                <label
+                                    className="cursor-pointer rounded-[4px] border px-3 py-1.5 text-sm font-medium transition hover:bg-[#E3EFEA]"
+                                    style={{ borderColor: CLINICAL, color: CLINICAL }}
+                                >
+                                    {loadingInternamento ? 'A carregar…' : 'Importar internamentos'}
+                                    <input type="file" accept=".xlsx,.csv" className="hidden" onChange={uploadExcel} />
+                                </label>
+
+                                <label
+                                    className="cursor-pointer rounded-[4px] border px-3 py-1.5 text-sm font-medium transition hover:bg-[#E3EFEA]"
+                                    style={{ borderColor: CLINICAL, color: CLINICAL }}
+                                >
+                                    {loadingBloco ? 'A carregar…' : 'Importar blocos'}
+                                    <input type="file" accept=".xlsx,.csv" className="hidden" onChange={uploadExcelBloco} />
+                                </label>
+                            </div>
+                    </div>
                 </div>
 
                 {/* Filtros */}
@@ -402,7 +410,7 @@ export default function Index({ items, filters, responsavel_options }: Props) {
                                             <td className="px-4 py-2.5 text-right">
                                                 <button
                                                     onClick={() => openModal(i)}
-                                                    className="rounded-[4px] border px-3 py-1 text-sm font-medium transition hover:text-white"
+                                                    className="rounded-[4px] border px-3 py-1 text-sm font-medium transition text-white cursor-pointer"
                                                     style={{ borderColor: CLINICAL, color: CLINICAL }}
                                                     onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = CLINICAL)}
                                                     onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}

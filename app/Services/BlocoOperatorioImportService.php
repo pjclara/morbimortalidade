@@ -119,6 +119,7 @@ class BlocoOperatorioImportService
 
         if ($bloco) {
             $bloco->update([
+                'numero_processo'      => $row['NUM_PROCESSO'] ?? null,
                 'internamento_id'     => $internamentoId,
                 'tipo_de_cirurgia_id' => $tipoCirurgiaId,
                 'ambulatorio'         => $row['CIR_AMB'] ?? 'N',
@@ -129,6 +130,7 @@ class BlocoOperatorioImportService
         }
 
         return BlocoOperatorio::create([
+            'numero_processo'      => $row['NUM_PROCESSO'] ?? null,
             'internamento_id'     => $internamentoId,
             'tipo_de_cirurgia_id' => $tipoCirurgiaId,
             'ambulatorio'         => $row['CIR_AMB'] ?? 'N',

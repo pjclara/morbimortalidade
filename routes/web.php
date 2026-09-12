@@ -83,6 +83,9 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/internamento/importBloco', [InternamentoController::class, 'importBloco'])
         ->name('internamento.importBloco');
 
+    Route::get('/internamento/ambulatorio', [InternamentoController::class, 'ambulatorio'])
+        ->name('internamento.ambulatorio');
+
     Route::get('/admin/users', [UserRoleController::class, 'index'])->name('admin.users');
     Route::post('/admin/users/{user}/roles', [UserRoleController::class, 'updateRoles'])->name('admin.users.roles');
     Route::resource('admin/users', UserController::class)
