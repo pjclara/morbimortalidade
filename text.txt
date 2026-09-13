@@ -1,0 +1,10 @@
+CREATE TABLE icd10_capitulos_secoes (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    capitulo VARCHAR(10),
+    secao VARCHAR(50),
+    codigo_inicio VARCHAR(10),
+    codigo_fim VARCHAR(10)
+);
+
+
+

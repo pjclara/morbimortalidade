@@ -174,7 +174,8 @@ export default function Index({ items, filters, responsavel_options }: Props) {
 
     const { auth } = usePage().props as any;
 
-    const isSuperAdmin = auth.user?.roles?.includes('super-admin');
+    const isSuperAdmin = auth.user?.roles?.includes('super_admin');
+
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -211,6 +212,7 @@ export default function Index({ items, filters, responsavel_options }: Props) {
                             Ambulatório
                         </Link>
 
+                        {isSuperAdmin && (
                             <div className="flex gap-2">
                                 <label
                                     className="cursor-pointer rounded-[4px] border px-3 py-1.5 text-sm font-medium transition hover:bg-[#E3EFEA]"
@@ -228,6 +230,7 @@ export default function Index({ items, filters, responsavel_options }: Props) {
                                     <input type="file" accept=".xlsx,.csv" className="hidden" onChange={uploadExcelBloco} />
                                 </label>
                             </div>
+                        )}
                     </div>
                 </div>
 

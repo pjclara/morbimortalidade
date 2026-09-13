@@ -4,7 +4,7 @@ import { NavUser } from '@/components/nav-user';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
-import { Folder, LayoutGrid, Users } from 'lucide-react';
+import { BarChart3, Folder, LayoutGrid, UserCheck, Users } from 'lucide-react';
 import AppLogo from './app-logo';
 
 const mainNavItems: NavItem[] = [
@@ -21,6 +21,8 @@ export function AppSidebar() {
         LayoutGrid,
         Folder,
         Users,
+        BarChart3,
+        UserCheck,
     };
 
     const mainNavItems = menu.map((item: any) => ({

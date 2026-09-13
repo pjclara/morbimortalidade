@@ -23,7 +23,10 @@ interface AmbulatorioItem {
         patient?: { processo?: string; nome?: string };
     } | null;
     tipo_de_cirurgia?: { nome?: string } | null;
-    bloco_operatorio_procedimentos?: { descricao?: string }[];
+    bloco_operatorio_procedimentos?: { 
+        procedimento?: { nome?: string, descricao?: string } | null;
+        descricao?: string;
+    }[];
     [key: string]: any;
 }
 
@@ -247,6 +250,9 @@ export default function Ambulatorio({ items, filters, tipo_de_cirurgia_options }
                                     <th className="px-4 py-2.5 font-medium" style={{ color: '#45524C' }}>
                                         Procedimentos
                                     </th>
+                                    <th className="px-4 py-2.5 font-medium" style={{ color: '#45524C' }}>
+                                        Descrição
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -260,7 +266,7 @@ export default function Ambulatorio({ items, filters, tipo_de_cirurgia_options }
                                             className="px-4 py-2.5 tabular-nums"
                                             style={{ fontFamily: "'IBM Plex Mono', ui-monospace, monospace", color: INK }}
                                         >
-                                            {b.internamento?.patient?.processo ?? '-'}
+                                            {b.numero_processo ?? '-'}
                                         </td>
                                         <td
                                             className="px-4 py-2.5 tabular-nums"
@@ -271,7 +277,10 @@ export default function Ambulatorio({ items, filters, tipo_de_cirurgia_options }
                                         <td className="px-4 py-2.5">{b.bloco_num ?? '-'}</td>
                                         <td className="px-4 py-2.5">{b.tipo_de_cirurgia?.nome ?? '-'}</td>
                                         <td className="px-4 py-2.5">
-                                            {(b.bloco_operatorio_procedimentos ?? []).map((p) => p.descricao).filter(Boolean).join(', ') || '-'}
+                                            {(b.bloco_operatorio_procedimentos ?? []).map((p) => p.procedimento?.nome).filter(Boolean).join(', ') || '-'}
+                                        </td>
+                                        <td className="px-4 py-2.5">
+                                            {(b.bloco_operatorio_procedimentos ?? []).map((p) => p.procedimento?.descricao).filter(Boolean).join(', ') || '-'}
                                         </td>
                                     </tr>
                                 ))}

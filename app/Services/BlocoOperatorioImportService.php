@@ -14,12 +14,17 @@ class BlocoOperatorioImportService
     protected array $tiposCirurgia;
     protected array $internamentos;
     protected array $procedimentos;
+    protected array $blocos;
 
     public function import(string $path): array
     {
         $this->tiposCirurgia = TipoDeCirurgia::pluck('id', 'nome')->toArray();
         $this->internamentos = Internamento::pluck('id', 'episodio')->toArray();
         $this->procedimentos = Procedimento::pluck('id', 'codigo')->toArray();
+        // Pré-carregado por bloco_num para evitar uma query de lookup por
+        // cada linha do Excel (uma menos por linha, tal como já se fazia
+        // para tipos de cirurgia, internamentos e procedimentos).
+        $this->blocos = BlocoOperatorio::whereNotNull('bloco_num')->pluck('id', 'bloco_num')->toArray();
 
         $importados = 0;
         $erros = [];
@@ -34,11 +39,11 @@ class BlocoOperatorioImportService
 
                     DB::transaction(function () use ($row, &$importados) {
 
-                        $internamento = $this->obterInternamento($row);
+                        $internamentoId = $this->obterInternamentoId($row);
 
                         $tipoCirurgiaId = $this->obterTipoCirurgia($row);
 
-                        $blocoOperatorio = $this->criarOuAtualizarBloco($row, $internamento, $tipoCirurgiaId);
+                        $blocoOperatorio = $this->criarOuAtualizarBloco($row, $internamentoId, $tipoCirurgiaId);
 
                         $this->addProcedimentos($row, $blocoOperatorio);
 
@@ -70,7 +75,7 @@ class BlocoOperatorioImportService
         }
     }
 
-    private function obterInternamento(array $row): ?Internamento
+    private function obterInternamentoId(array $row): ?int
     {
         $episodio = $row['NUM_EPISODIO'] ?? null;
 
@@ -80,11 +85,9 @@ class BlocoOperatorioImportService
         }
 
         // Se existir episódio mas não existir internamento → também é ambulatório
-        if (!isset($this->internamentos[$episodio])) {
-            return null;
-        }
-
-        return Internamento::find($this->internamentos[$episodio]);
+        // O id já vem pré-carregado em memória (ver import()) — não há necessidade
+        // de ir buscar o modelo completo à base de dados aqui.
+        return $this->internamentos[$episodio] ?? null;
     }
 
 
@@ -111,13 +114,14 @@ class BlocoOperatorioImportService
         return $tipo->id;
     }
 
-    private function criarOuAtualizarBloco(array $row, ?Internamento $internamento, int $tipoCirurgiaId): BlocoOperatorio
+    private function criarOuAtualizarBloco(array $row, ?int $internamentoId, int $tipoCirurgiaId): BlocoOperatorio
     {
-        $bloco = BlocoOperatorio::where('bloco_num', $row['BLO_NUM_REG'])->first();
+        $blocoNum = $row['BLO_NUM_REG'];
+        $blocoId = $this->blocos[$blocoNum] ?? null;
 
-        $internamentoId = $internamento?->id;
+        if ($blocoId) {
+            $bloco = BlocoOperatorio::findOrFail($blocoId);
 
-        if ($bloco) {
             $bloco->update([
                 'numero_processo'      => $row['NUM_PROCESSO'] ?? null,
                 'internamento_id'     => $internamentoId,
@@ -129,14 +133,18 @@ class BlocoOperatorioImportService
             return $bloco;
         }
 
-        return BlocoOperatorio::create([
+        $bloco = BlocoOperatorio::create([
             'numero_processo'      => $row['NUM_PROCESSO'] ?? null,
             'internamento_id'     => $internamentoId,
             'tipo_de_cirurgia_id' => $tipoCirurgiaId,
             'ambulatorio'         => $row['CIR_AMB'] ?? 'N',
-            'bloco_num'           => $row['BLO_NUM_REG'],
+            'bloco_num'           => $blocoNum,
             'data_intervencao'    => $row['DTA_INTERVENCAO'],
         ]);
+
+        $this->blocos[$blocoNum] = $bloco->id;
+
+        return $bloco;
     }
 
 
@@ -149,6 +157,8 @@ class BlocoOperatorioImportService
         $codigos = preg_split('/[;,]/', $row['COD_INTERV_CIRURGICA']);
 
         $nomePrincipal = trim($row['PROCEDIMENTO PRINCIPAL'] ?? '');;
+
+        $procedimentoIds = [];
 
         foreach ($codigos as $codigoRaw) {
 
@@ -169,7 +179,13 @@ class BlocoOperatorioImportService
                 $this->procedimentos[$codigo] = $procedimentoId;
             }
 
-            $blocoOperatorio->procedimentos()->syncWithoutDetaching([$procedimentoId]);
+            $procedimentoIds[] = $procedimentoId;
+        }
+
+        if (!empty($procedimentoIds)) {
+            // Um único sync com todos os ids da linha, em vez de um por código
+            // (cada syncWithoutDetaching faz o seu próprio round-trip à BD).
+            $blocoOperatorio->procedimentos()->syncWithoutDetaching($procedimentoIds);
         }
     }
 }

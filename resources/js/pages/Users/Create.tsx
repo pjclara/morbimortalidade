@@ -59,7 +59,7 @@ export default function Create() {
       </div>
 
       <div>
-        <label>Password</label>
+        <label>Palavra‑passe</label>
         <input
           type="password"
           value={data.password}

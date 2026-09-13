@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class BlocoOperatorio extends Model
 {
-    protected $fillable = ['ambulatorio', 'bloco_num', 'data_intervencao', 'internamento_id', 'tipo_de_cirurgia_id'];
+    protected $fillable = ['ambulatorio', 'bloco_num', 'data_intervencao', 'internamento_id', 'numero_processo', 'tipo_de_cirurgia_id'];
 
     //
 

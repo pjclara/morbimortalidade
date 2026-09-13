@@ -21,7 +21,13 @@ class MenuService
                 'title' => 'Internamentos',
                 'href' => '/internamentos',
                 'icon' => 'Folder',
-                'roles' =>['super_admin', 'Interno da especialidade', 'Interno do geral'] 
+                'roles' =>['super_admin', 'Interno da especialidade', 'Interno do geral']
+            ],
+            [
+                'title' => 'Analítica',
+                'href' => '/analitica',
+                'icon' => 'BarChart3',
+                'roles' => ['super_admin', 'Interno da especialidade', 'Interno do geral'],
             ],
             [
                 'title' => 'Utilizadores',

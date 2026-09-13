@@ -197,9 +197,7 @@ class InternamentoController extends Controller
             ->where('ambulatorio', 'S');
 
         if ($request->filled('processo')) {
-            $query->whereHas('internamento.patient', function ($q) use ($request) {
-                $q->where('processo', 'like', "%{$request->processo}%");
-            });
+            $query->where('numero_processo', 'like', "%{$request->processo}%");
         }
 
         $de = $request->input('data_de');
@@ -385,6 +383,10 @@ class InternamentoController extends Controller
             'file' => 'required|mimes:xlsx,csv'
         ]);
 
+        // Ficheiros grandes podem demorar mais que o limite por omissão do
+        // PHP (60s); a importação corre de forma síncrona no pedido.
+        set_time_limit(300);
+
         $path = $request->file('file')->store('imports');
 
         $service = new \App\Services\InternamentoImportService();
@@ -401,6 +403,9 @@ class InternamentoController extends Controller
         $request->validate([
             'file' => 'required|mimes:xlsx,csv'
         ]);
+
+        // Ver comentário em import(): rede de segurança para ficheiros grandes.
+        set_time_limit(300);
 
         $path = $request->file('file')->store('imports');
 

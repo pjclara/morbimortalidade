@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AnaliticaController;
 use App\Http\Controllers\BlocoOperatorioController;
 use App\Http\Controllers\BlocoOperatorioProcedimentoController;
 use App\Http\Controllers\ClavienDindoController;
@@ -45,6 +46,9 @@ Route::get('/', function () {
 Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', [DashboardCirurgiaController::class, 'index'])
         ->name('dashboard');
+
+    Route::get('/analitica', [AnaliticaController::class, 'index'])
+        ->name('analitica');
 
 
     Route::resource('bloco_operatorio_procedimento', BlocoOperatorioProcedimentoController::class);
