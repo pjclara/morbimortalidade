@@ -3,19 +3,37 @@
 namespace App\Http\Controllers;
 
 use App\Models\BlocoOperatorio;
+use App\Models\Icd10CapitulosSecoes;
+use App\Models\Icd10CM;
+use App\Models\Icd10PcsAxis2Option;
+use App\Models\Icd10PcsAxis4Option;
 use App\Models\Internamento;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class AnaliticaController extends Controller
 {
+    // Sem filtro de data explícito, mostra só os últimos 3 meses — a página
+    // ficava lenta a agregar anos de internamentos/cirurgias de uma vez.
+    private const PERIODO_OMISSAO_MESES = 3;
+
     public function index(Request $request)
     {
         $dataInicio = $request->query('data_inicio');
         $dataFim = $request->query('data_fim');
         $equipaId = $request->query('equipa_id');
+        $verTudo = $request->boolean('todos');
+
+        // Sem datas nem pedido explícito de "ver tudo", aplica o período por
+        // omissão — evita agregar anos de histórico em cada carregamento.
+        $periodoPorOmissao = ! $dataInicio && ! $dataFim && ! $verTudo;
+        if ($periodoPorOmissao) {
+            $dataFim = Carbon::now()->toDateString();
+            $dataInicio = Carbon::now()->subMonths(self::PERIODO_OMISSAO_MESES)->toDateString();
+        }
 
         // ---------------------------------------------------------------
         // Queries base, com os filtros aplicados. São clonadas em cada
@@ -171,15 +189,72 @@ class AnaliticaController extends Controller
             ->sortBy(fn($f) => array_search($f['faixa'], ['0-17', '18-39', '40-59', '60-74', '75+']))
             ->values();
 
-        $topDiagnosticos = DB::table('diagnostico_internamento')
+        // Contagem por código de diagnóstico principal — join simples e indexado
+        // (diagnostico_internamento.diagnostico_id / internamento_id), sem
+        // qualquer cruzamento com os catálogos CID-10.
+        $diagnosticoCounts = DB::table('diagnostico_internamento')
             ->join('diagnosticos', 'diagnosticos.id', '=', 'diagnostico_internamento.diagnostico_id')
             ->whereIn('diagnostico_internamento.internamento_id', $internamentoIds)
             ->where('principal', true)
-            ->selectRaw('diagnosticos.nome, COUNT(*) as total')
-            ->groupBy('diagnosticos.id', 'diagnosticos.nome')
+            ->selectRaw('diagnosticos.codigo, diagnosticos.nome, COUNT(*) as total')
+            ->groupBy('diagnosticos.codigo', 'diagnosticos.nome')
             ->orderByDesc('total')
-            ->limit(10)
             ->get();
+
+        // Descrições oficiais CID-10-CM (Icd10CM) para os códigos mais frequentes —
+        // troca o nome abreviado do catálogo interno pela descrição completa
+        // quando existe correspondência exata (código é chave única e indexada).
+        $codigosTop10 = $diagnosticoCounts->take(10)->pluck('codigo');
+        $descricoesIcd10Cm = Icd10CM::query()
+            ->whereIn('code', $codigosTop10)
+            ->pluck('description', 'code');
+
+        $topDiagnosticos = $diagnosticoCounts->take(10)->map(fn($r) => [
+            'nome' => $descricoesIcd10Cm[$r->codigo] ?? $r->nome,
+            'total' => (int) $r->total,
+        ])->values();
+
+        // Classificação por capítulo/secção CID-10 — feita em memória a partir do
+        // model Icd10CapitulosSecoes (só 235 linhas, cacheadas) em vez de um JOIN
+        // SQL por intervalo de código: essa comparação exigia converter a
+        // collation em cada linha e corria sem índice, e era o principal motivo
+        // de lentidão da página.
+        $faixasIcd10 = Cache::rememberForever('icd10_capitulos_secoes.faixas', function () {
+            return Icd10CapitulosSecoes::query()
+                ->orderBy('codigo_inicio')
+                ->get(['codigo_inicio', 'codigo_fim', 'capitulo_descricao', 'seccao_descricao'])
+                ->all();
+        });
+
+        $porCapitulo = [];
+        $porSeccao = [];
+
+        foreach ($diagnosticoCounts as $r) {
+            $prefixo = substr($r->codigo, 0, 3);
+
+            foreach ($faixasIcd10 as $faixa) {
+                if ($prefixo < $faixa->codigo_inicio) {
+                    break; // faixas ordenadas por codigo_inicio e não sobrepostas
+                }
+                if ($prefixo <= $faixa->codigo_fim) {
+                    $porCapitulo[$faixa->capitulo_descricao] = ($porCapitulo[$faixa->capitulo_descricao] ?? 0) + $r->total;
+                    $porSeccao[$faixa->seccao_descricao] = ($porSeccao[$faixa->seccao_descricao] ?? 0) + $r->total;
+                    break;
+                }
+            }
+        }
+
+        arsort($porCapitulo);
+        arsort($porSeccao);
+
+        $porCapituloDiagnostico = collect($porCapitulo)
+            ->map(fn($total, $nome) => ['nome' => $nome, 'total' => (int) $total])
+            ->values();
+
+        $porSeccaoDiagnostico = collect($porSeccao)
+            ->take(10)
+            ->map(fn($total, $nome) => ['nome' => $nome, 'total' => (int) $total])
+            ->values();
 
         $topComplicacoes = DB::table('complicacao_internamento')
             ->join('complicacaos', 'complicacaos.id', '=', 'complicacao_internamento.complicacao_id')
@@ -214,14 +289,62 @@ class AnaliticaController extends Controller
             ->sortBy(fn($r) => (array_search($r['dia'], $diasSemana) + 6) % 7)
             ->values();
 
-        $topProcedimentos = DB::table('bloco_operatorio_procedimento')
+        $procedimentoCounts = DB::table('bloco_operatorio_procedimento')
             ->join('procedimentos', 'procedimentos.id', '=', 'bloco_operatorio_procedimento.procedimento_id')
             ->whereIn('bloco_operatorio_procedimento.bloco_operatorio_id', $blocoIds)
-            ->selectRaw('procedimentos.nome, COUNT(*) as total')
-            ->groupBy('procedimentos.id', 'procedimentos.nome')
+            ->selectRaw('procedimentos.codigo, procedimentos.nome, COUNT(*) as total')
+            ->groupBy('procedimentos.id', 'procedimentos.codigo', 'procedimentos.nome')
             ->orderByDesc('total')
-            ->limit(10)
             ->get();
+
+        $topProcedimentos = $procedimentoCounts->take(10)->map(fn($r) => [
+            'nome' => $r->nome,
+            'total' => (int) $r->total,
+        ])->values();
+
+        // Sistema corporal (ICD-10-PCS, eixo 2) — os 2 primeiros caracteres do
+        // código do procedimento identificam secção+sistema corporal; junção
+        // exata (sem intervalos), por isso um simples lookup em memória a
+        // partir do model Icd10PcsAxis2Option (só 116 linhas, cacheadas).
+        $sistemasCorporais = Cache::rememberForever('icd10_pcs_axis_2_options.prefixos', function () {
+            return Icd10PcsAxis2Option::query()
+                ->pluck('description', 'prefix');
+        });
+
+        $porSistemaCorporal = [];
+        foreach ($procedimentoCounts as $r) {
+            $prefixo = substr($r->codigo, 0, 2);
+            $nome = $sistemasCorporais[$prefixo] ?? 'Não classificado';
+            $porSistemaCorporal[$nome] = ($porSistemaCorporal[$nome] ?? 0) + $r->total;
+        }
+        arsort($porSistemaCorporal);
+
+        $porSistemaCorporal = collect($porSistemaCorporal)
+            ->map(fn($total, $nome) => ['nome' => $nome, 'total' => (int) $total])
+            ->values();
+
+        // Parte do corpo (ICD-10-PCS, eixo 4) — os 4 primeiros caracteres do
+        // código. Ao contrário do eixo 2, esta tabela tem 12 mil linhas, pelo
+        // que não vale a pena cachear por inteiro: procura-se só pelos
+        // prefixos realmente usados nos procedimentos deste período
+        // (correspondência exata, coluna "prefix" é chave única e indexada).
+        $prefixosParteCorpo = $procedimentoCounts->map(fn($r) => substr($r->codigo, 0, 4))->unique()->values();
+        $partesCorpo = Icd10PcsAxis4Option::query()
+            ->whereIn('prefix', $prefixosParteCorpo)
+            ->pluck('description', 'prefix');
+
+        $porParteCorpo = [];
+        foreach ($procedimentoCounts as $r) {
+            $prefixo = substr($r->codigo, 0, 4);
+            $nome = $partesCorpo[$prefixo] ?? 'Não classificado';
+            $porParteCorpo[$nome] = ($porParteCorpo[$nome] ?? 0) + $r->total;
+        }
+        arsort($porParteCorpo);
+
+        $porParteCorpo = collect($porParteCorpo)
+            ->take(10)
+            ->map(fn($total, $nome) => ['nome' => $nome, 'total' => (int) $total])
+            ->values();
 
         return Inertia::render('Analitica/Index', [
             'kpis' => $kpis,
@@ -234,16 +357,21 @@ class AnaliticaController extends Controller
             'porSexo' => $porSexo,
             'porFaixaEtaria' => $porFaixaEtaria,
             'topDiagnosticos' => $topDiagnosticos,
+            'porCapituloDiagnostico' => $porCapituloDiagnostico,
+            'porSeccaoDiagnostico' => $porSeccaoDiagnostico,
             'topComplicacoes' => $topComplicacoes,
             'porTipoCirurgia' => $porTipoCirurgia,
             'porDiaSemana' => $porDiaSemana,
             'topProcedimentos' => $topProcedimentos,
+            'porSistemaCorporal' => $porSistemaCorporal,
+            'porParteCorpo' => $porParteCorpo,
             'equipas' => DB::table('equipas')->select('id', 'nome')->orderBy('nome')->get(),
             'filtros' => [
                 'data_inicio' => $dataInicio,
                 'data_fim' => $dataFim,
                 'equipa_id' => $equipaId,
             ],
+            'periodoPorOmissao' => $periodoPorOmissao,
         ]);
     }
 }

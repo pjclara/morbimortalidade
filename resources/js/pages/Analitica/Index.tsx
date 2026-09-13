@@ -102,12 +102,17 @@ interface PageProps {
     porSexo: NomeTotal[];
     porFaixaEtaria: FaixaTotal[];
     topDiagnosticos: NomeTotal[];
+    porCapituloDiagnostico: NomeTotal[];
+    porSeccaoDiagnostico: NomeTotal[];
     topComplicacoes: GrupoTotal[];
     porTipoCirurgia: NomeTotal[];
     porDiaSemana: { dia: string; total: number }[];
     topProcedimentos: NomeTotal[];
+    porSistemaCorporal: NomeTotal[];
+    porParteCorpo: NomeTotal[];
     equipas: Equipa[];
     filtros: Filtros;
+    periodoPorOmissao: boolean;
 }
 
 function fmt(n: number) {
@@ -214,12 +219,17 @@ export default function AnaliticaIndex() {
         porSexo = [],
         porFaixaEtaria = [],
         topDiagnosticos = [],
+        porCapituloDiagnostico = [],
+        porSeccaoDiagnostico = [],
         topComplicacoes = [],
         porTipoCirurgia = [],
         porDiaSemana = [],
         topProcedimentos = [],
+        porSistemaCorporal = [],
+        porParteCorpo = [],
         equipas = [],
         filtros,
+        periodoPorOmissao,
     } = usePage<PageProps>().props;
 
     const [local, setLocal] = useState<Filtros>(filtros ?? {});
@@ -234,7 +244,13 @@ export default function AnaliticaIndex() {
         router.get('/analitica', {}, { preserveState: true, preserveScroll: true });
     }
 
-    const hasFiltros = Object.values(local).some((v) => v);
+    function verHistoricoCompleto() {
+        const next = { ...local, data_inicio: undefined, data_fim: undefined };
+        setLocal(next);
+        router.get('/analitica', { ...next, todos: 1 }, { preserveState: true, preserveScroll: true });
+    }
+
+    const hasFiltros = Boolean(local.equipa_id) || !periodoPorOmissao;
 
     const lineChartData = {
         labels: internamentosPorMes.map((m) => m.mes),
@@ -297,6 +313,14 @@ export default function AnaliticaIndex() {
                         <p className="text-sm" style={{ color: MUTED }}>
                             Internamentos e bloco operatório — visão agregada da base de dados.
                         </p>
+                        {periodoPorOmissao && (
+                            <p className="mt-1 text-xs" style={{ color: MUTED }}>
+                                A mostrar os últimos 3 meses por questões de desempenho.{' '}
+                                <button onClick={verHistoricoCompleto} className="underline underline-offset-2 hover:no-underline" style={{ color: CLINICAL }}>
+                                    Ver histórico completo
+                                </button>
+                            </p>
+                        )}
                     </div>
 
                     <div className="flex flex-wrap items-end gap-3">
@@ -427,6 +451,14 @@ export default function AnaliticaIndex() {
                             <BarList rows={topDiagnosticos} labelKey="nome" valueKey="total" limit={10} />
                         </Section>
 
+                        <Section title="Diagnósticos por capítulo CID-10" subtitle="Classificação internacional de doenças (ICD-10-CM).">
+                            <BarList rows={porCapituloDiagnostico} labelKey="nome" valueKey="total" />
+                        </Section>
+
+                        <Section title="Diagnósticos por secção CID-10" subtitle="Top 10 secções mais frequentes.">
+                            <BarList rows={porSeccaoDiagnostico} labelKey="nome" valueKey="total" limit={10} />
+                        </Section>
+
                         <Section title="Complicações por grupo" subtitle="Agrupadas por categoria clínica.">
                             <BarList rows={topComplicacoes} labelKey="grupo" valueKey="total" accent={ROSE} />
                         </Section>
@@ -449,6 +481,14 @@ export default function AnaliticaIndex() {
 
                         <Section title="Procedimentos mais frequentes" subtitle="Top 10.">
                             <BarList rows={topProcedimentos} labelKey="nome" valueKey="total" limit={10} />
+                        </Section>
+
+                        <Section title="Procedimentos por sistema corporal" subtitle="Classificação ICD-10-PCS (eixo 2).">
+                            <BarList rows={porSistemaCorporal} labelKey="nome" valueKey="total" limit={10} />
+                        </Section>
+
+                        <Section title="Procedimentos por parte do corpo" subtitle="Classificação ICD-10-PCS (eixo 4) — top 10.">
+                            <BarList rows={porParteCorpo} labelKey="nome" valueKey="total" limit={10} />
                         </Section>
                     </div>
                 </div>
