@@ -295,7 +295,12 @@ class InternamentoController extends Controller
         $complicacaoInternamentosData = $validatedData['complicacao_internamentos'] ?? [];
         unset($validatedData['complicacao_internamentos']);
 
-        DB::transaction(function () use ($internamento, $validatedData, $complicacaoInternamentosData) {
+        // Guardado à parte porque, sem complicações, o Clavien-Dindo é
+        // sempre recalculado a seguir — só sobrevive se for explicitamente
+        // o grau "Sem complicações" escolhido no separador Complicações.
+        $requestedClavienDindoId = $validatedData['clavien_dindo_id'] ?? null;
+
+        DB::transaction(function () use ($internamento, $validatedData, $complicacaoInternamentosData, $requestedClavienDindoId) {
             $internamento->update($validatedData);
 
             $incomingIds = [];
@@ -358,6 +363,13 @@ class InternamentoController extends Controller
                         $maxClavien = $res->clavien_dindo_id;
                     }
                 }
+            }
+
+            // Sem complicações registadas, o único grau que faz sentido
+            // manter é "Sem complicações" (id 10), e só se foi explicitamente
+            // pedido — nunca um grau de gravidade sem complicações associadas.
+            if ($maxClavien === null && $requestedClavienDindoId == ClavienDindo::SEM_COMPLICACOES_ID) {
+                $maxClavien = ClavienDindo::SEM_COMPLICACOES_ID;
             }
 
             $internamento->update([

@@ -42,6 +42,10 @@ const FIELD_TAB_MAP: Record<string, string> = {
     observacoes: 'observacoes',
 };
 
+// Grau Clavien-Dindo usado para assinalar explicitamente "sem complicações"
+// (ver App\Models\ClavienDindo::SEM_COMPLICACOES_ID, no backend).
+const SEM_COMPLICACOES_CLAVIEN_ID = 10;
+
 function tabForErrorKey(key: string): string | undefined {
     if (key.startsWith('complicacao_internamentos')) return 'complicacoes';
     return FIELD_TAB_MAP[key];
@@ -215,6 +219,30 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
         setComplicacaoInternamentos(
             complicacaoInternamentos.map((item: any) => (getComplicacaoKey(item) === getComplicacaoKey(ci) ? { ...item, ...patch } : item)),
         );
+    }
+
+    // "Sem complicações" é representado pelo grau Clavien-Dindo especial
+    // (id 10) e é mutuamente exclusivo com ter complicações registadas:
+    // marcar a flag com complicações já lançadas exige confirmação para as
+    // descartar, em vez de ficar num estado ambíguo até se guardar.
+    function toggleSemComplicacoes(checked: boolean) {
+        if (checked && complicacaoInternamentos.length > 0) {
+            const discard = window.confirm(
+                'Este internamento já tem complicações registadas. Marcar "Sem complicações" vai removê-las. Continuar?',
+            );
+            if (!discard) return;
+
+            setForm({
+                ...form,
+                clavien_dindo_id: SEM_COMPLICACOES_CLAVIEN_ID,
+                complicacaoInternamentos: [],
+                complicacao_internamentos: [],
+            });
+            setIsDirty(true);
+            return;
+        }
+
+        handleChange('clavien_dindo_id', checked ? SEM_COMPLICACOES_CLAVIEN_ID : null);
     }
 
     function toggleMode() {
@@ -637,7 +665,10 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
 
                         {tab === 'observacoes' && <>{renderField('Observações', 'observacoes', item.observacoes ?? '-')}</>}
 
-                        {tab === 'complicacoes' && (
+                        {tab === 'complicacoes' && (() => {
+                            const isSemComplicacoes = Number(form.clavien_dindo_id) === SEM_COMPLICACOES_CLAVIEN_ID;
+
+                            return (
                             <>
                                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                                     <h3 className="text-base font-semibold" style={{ color: "#17241F" }}>Complicações</h3>
@@ -645,7 +676,8 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
                                         <button
                                             type="button"
                                             onClick={addComplicacao}
-                                            className="rounded-[4px] border px-3 py-1.5 text-sm font-medium transition hover:bg-[#E3EFEA]"
+                                            disabled={isSemComplicacoes}
+                                            className="rounded-[4px] border px-3 py-1.5 text-sm font-medium transition hover:bg-[#E3EFEA] disabled:cursor-not-allowed disabled:opacity-50"
                                             style={{ borderColor: CLINICAL, color: CLINICAL }}
                                         >
                                             Adicionar Complicação
@@ -653,6 +685,28 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
                                     )}
                                 </div>
 
+                                <label
+                                    className={cn(
+                                        'flex items-center gap-2 rounded-[6px] border px-4 py-2.5 text-sm',
+                                        !editMode && 'cursor-default',
+                                    )}
+                                    style={{
+                                        borderColor: isSemComplicacoes ? CLINICAL : LINE,
+                                        backgroundColor: isSemComplicacoes ? CLINICAL_SOFT : PAPER,
+                                        color: isSemComplicacoes ? CLINICAL : INK,
+                                    }}
+                                >
+                                    <input
+                                        type="checkbox"
+                                        className="h-4 w-4 accent-[#1E6F5C] disabled:cursor-not-allowed"
+                                        checked={isSemComplicacoes}
+                                        disabled={!editMode}
+                                        onChange={(e) => toggleSemComplicacoes(e.target.checked)}
+                                    />
+                                    Sem complicações — confirmo que este doente foi revisto e não teve complicações.
+                                </label>
+
+                                {!isSemComplicacoes && (
                                 <div className="space-y-4">
                                     {complicacaoInternamentos.map((ci: any, index: number) => {
                                         const ciId = getComplicacaoKey(ci);
@@ -839,8 +893,10 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
                                         );
                                     })}
                                 </div>
+                                )}
                             </>
-                        )}
+                            );
+                        })()}
                     </div>
                 </div>
 
