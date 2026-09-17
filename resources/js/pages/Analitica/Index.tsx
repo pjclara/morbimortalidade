@@ -45,6 +45,8 @@ interface Kpis {
     taxaMortalidadeAposAlta: number;
     taxaAmbulatorio: number;
     taxaComplicacoes: number;
+    casosSociais: number;
+    taxaCasosSociais: number;
 }
 
 interface MesInternamento {
@@ -63,6 +65,7 @@ interface MesCirurgia {
 interface NomeTotal {
     nome: string;
     total: number;
+    pct?: number;
 }
 
 interface EquipaLinha extends NomeTotal {
@@ -85,6 +88,23 @@ interface Equipa {
     nome: string;
 }
 
+interface AvaliacaoSegmento {
+    total: number;
+    mediaDiasInternamento: number;
+    taxaMortalidade: number;
+    taxaMortalidadeAposAlta: number;
+    porOrigem: NomeTotal[];
+    porDestino: NomeTotal[];
+}
+
+interface Avaliacao {
+    geral: AvaliacaoSegmento & {
+        taxaMortalidadeCirurgica: number;
+        taxaMortalidadeAposAltaCirurgica: number;
+    };
+    operados: AvaliacaoSegmento;
+}
+
 interface Filtros {
     data_inicio?: string;
     data_fim?: string;
@@ -93,6 +113,7 @@ interface Filtros {
 
 interface PageProps {
     kpis: Kpis;
+    avaliacao: Avaliacao;
     internamentosPorMes: MesInternamento[];
     cirurgiasPorMes: MesCirurgia[];
     porEquipa: EquipaLinha[];
@@ -143,6 +164,7 @@ function BarList({
     rows,
     labelKey,
     valueKey,
+    pctKey,
     accent = CLINICAL,
     emptyText = 'Sem dados no período seleccionado.',
     limit,
@@ -150,6 +172,7 @@ function BarList({
     rows: Record<string, any>[];
     labelKey: string;
     valueKey: string;
+    pctKey?: string;
     accent?: string;
     emptyText?: string;
     limit?: number;
@@ -165,7 +188,7 @@ function BarList({
         <div className="flex flex-col gap-2.5">
             {data.map((row, i) => {
                 const value = Number(row[valueKey]) || 0;
-                const pct = Math.max(2, (value / max) * 100);
+                const barWidthPct = Math.max(2, (value / max) * 100);
                 return (
                     <div key={i} className="grid grid-cols-[1fr_auto] items-center gap-3">
                         <div>
@@ -175,12 +198,17 @@ function BarList({
                             <div className="mt-1 h-1.5 w-full rounded-full" style={{ backgroundColor: CLINICAL_SOFT }}>
                                 <div
                                     className="h-1.5 rounded-full transition-all"
-                                    style={{ width: `${pct}%`, backgroundColor: accent }}
+                                    style={{ width: `${barWidthPct}%`, backgroundColor: accent }}
                                 />
                             </div>
                         </div>
                         <span className="text-sm font-medium tabular-nums" style={{ color: INK }}>
                             {fmt(value)}
+                            {pctKey && (
+                                <span className="ml-1 font-normal" style={{ color: MUTED }}>
+                                    ({fmt(Number(row[pctKey]) || 0)}%)
+                                </span>
+                            )}
                         </span>
                     </div>
                 );
@@ -210,6 +238,7 @@ function Section({ title, subtitle, children }: { title: string; subtitle?: stri
 export default function AnaliticaIndex() {
     const {
         kpis,
+        avaliacao,
         internamentosPorMes = [],
         cirurgiasPorMes = [],
         porEquipa = [],
@@ -233,6 +262,8 @@ export default function AnaliticaIndex() {
     } = usePage<PageProps>().props;
 
     const [local, setLocal] = useState<Filtros>(filtros ?? {});
+    const [avaliacaoTab, setAvaliacaoTab] = useState<'geral' | 'operados'>('geral');
+    const segmentoAtivo = avaliacaoTab === 'geral' ? avaliacao.geral : avaliacao.operados;
 
     function apply(next: Filtros) {
         setLocal(next);
@@ -370,7 +401,7 @@ export default function AnaliticaIndex() {
                 </div>
 
                 {/* KPIs */}
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8">
                     <KpiTile label="Internamentos" value={kpis.totalInternamentos} />
                     <KpiTile label="Cirurgias" value={kpis.totalCirurgias} />
                     <KpiTile label="Média dias internamento" value={kpis.mediaDiasInternamento} />
@@ -378,6 +409,69 @@ export default function AnaliticaIndex() {
                     <KpiTile label="Complicações" value={kpis.taxaComplicacoes} suffix="%" />
                     <KpiTile label="Mortalidade" value={kpis.taxaMortalidade} suffix="%" tone="rose" />
                     <KpiTile label="Mortalidade após alta" value={kpis.taxaMortalidadeAposAlta} suffix="%" tone="rose" />
+                    <KpiTile
+                        label="Casos sociais"
+                        value={kpis.casosSociais}
+                        suffix={`(${fmt(kpis.taxaCasosSociais)}%)`}
+                    />
+                </div>
+
+                {/* Avaliação clínica — Geral vs. Operados */}
+                <div>
+                    <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                        <h2 className="text-sm font-semibold tracking-wide uppercase" style={{ color: MUTED }}>
+                            Avaliação clínica
+                        </h2>
+                        <div className="inline-flex rounded-[4px] border p-0.5" style={{ borderColor: LINE }}>
+                            {(['geral', 'operados'] as const).map((tab) => (
+                                <button
+                                    key={tab}
+                                    onClick={() => setAvaliacaoTab(tab)}
+                                    className="rounded-[3px] px-3 py-1 text-sm font-medium transition"
+                                    style={avaliacaoTab === tab ? { backgroundColor: CLINICAL, color: '#fff' } : { color: MUTED }}
+                                >
+                                    {tab === 'geral' ? 'Geral (operados ou não)' : 'Operados'}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+                        <KpiTile label="Internamentos" value={segmentoAtivo.total} />
+                        <KpiTile label="Média dias internamento" value={segmentoAtivo.mediaDiasInternamento} />
+                        <KpiTile
+                            label={avaliacaoTab === 'geral' ? 'Mortalidade global' : 'Mortalidade'}
+                            value={segmentoAtivo.taxaMortalidade}
+                            suffix="%"
+                            tone="rose"
+                        />
+                        {avaliacaoTab === 'geral' && (
+                            <KpiTile label="Mortalidade cirúrgica" value={avaliacao.geral.taxaMortalidadeCirurgica} suffix="%" tone="rose" />
+                        )}
+                        <KpiTile
+                            label={avaliacaoTab === 'geral' ? 'Mortalidade pós alta global' : 'Mortalidade pós alta'}
+                            value={segmentoAtivo.taxaMortalidadeAposAlta}
+                            suffix="%"
+                            tone="rose"
+                        />
+                        {avaliacaoTab === 'geral' && (
+                            <KpiTile
+                                label="Mortalidade pós alta cirúrgica"
+                                value={avaliacao.geral.taxaMortalidadeAposAltaCirurgica}
+                                suffix="%"
+                                tone="rose"
+                            />
+                        )}
+                    </div>
+
+                    <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+                        <Section title="Origem do internamento">
+                            <BarList rows={segmentoAtivo.porOrigem} labelKey="nome" valueKey="total" />
+                        </Section>
+                        <Section title="Destino após alta">
+                            <BarList rows={segmentoAtivo.porDestino} labelKey="nome" valueKey="total" />
+                        </Section>
+                    </div>
                 </div>
 
                 {/* Evolução temporal */}
@@ -435,8 +529,8 @@ export default function AnaliticaIndex() {
                             <BarList rows={porOrigem} labelKey="nome" valueKey="total" />
                         </Section>
 
-                        <Section title="Classificação Clavien-Dindo" subtitle="Gravidade das complicações associadas.">
-                            <BarList rows={porClavienDindo} labelKey="nome" valueKey="total" accent={ROSE} />
+                        <Section title="Classificação Clavien-Dindo" subtitle="Gravidade das complicações associadas, por ordem de grau.">
+                            <BarList rows={porClavienDindo} labelKey="nome" valueKey="total" pctKey="pct" accent={ROSE} />
                         </Section>
 
                         <Section title="Sexo">

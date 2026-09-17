@@ -15,7 +15,9 @@ const footerNavItems: NavItem[] = [];
 
 export function AppSidebar() {
     const page = usePage();
-    const { menu } = page.props;
+    const { menu } = page.props as unknown as {
+        menu: Array<{ title: string; href: string; icon: string }>;
+    };
     // Converter menu do backend → NavItem[]
     const iconMap: Record<string, any> = {
         LayoutGrid,
@@ -25,7 +27,7 @@ export function AppSidebar() {
         UserCheck,
     };
 
-    const mainNavItems = menu.map((item: any) => ({
+    const mainNavItems = menu.map((item) => ({
         title: item.title,
         url: item.href,
         icon: iconMap[item.icon] ?? LayoutGrid,

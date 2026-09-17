@@ -55,12 +55,12 @@ class AnaliticaController extends Controller
         $blocoQuery = BlocoOperatorio::query();
 
         if ($dataInicio) {
-            $internamentoQuery->where('data_entrada', '>=', Carbon::parse($dataInicio)->startOfDay());
+            $internamentoQuery->where('data_saida', '>=', Carbon::parse($dataInicio)->startOfDay());
             $blocoQuery->where('data_intervencao', '>=', Carbon::parse($dataInicio)->startOfDay());
         }
 
         if ($dataFim) {
-            $internamentoQuery->where('data_entrada', '<=', Carbon::parse($dataFim)->endOfDay());
+            $internamentoQuery->where('data_saida', '<=', Carbon::parse($dataFim)->endOfDay());
             $blocoQuery->where('data_intervencao', '<=', Carbon::parse($dataFim)->endOfDay());
         }
 
@@ -84,6 +84,12 @@ class AnaliticaController extends Controller
                 ->distinct('internamento_id')
                 ->count('internamento_id')
             : 0;
+        // Caso social: teve alta clínica (data_alta) antes de sair de facto
+        // (data_saida) — ficou internado por razões sociais, não médicas.
+        $casosSociais = (clone $internamentoQuery)
+            ->whereNotNull('data_alta')
+            ->whereColumn('data_alta', '<', 'data_saida')
+            ->count();
 
         $kpis = [
             'totalInternamentos' => $totalInternamentos,
@@ -93,14 +99,16 @@ class AnaliticaController extends Controller
             'taxaMortalidadeAposAlta' => $totalInternamentos ? round($falecidosAposAlta / $totalInternamentos * 100, 1) : 0,
             'taxaAmbulatorio' => $totalCirurgias ? round($ambulatorio / $totalCirurgias * 100, 1) : 0,
             'taxaComplicacoes' => $totalInternamentos ? round($comComplicacoes / $totalInternamentos * 100, 1) : 0,
+            'casosSociais' => $casosSociais,
+            'taxaCasosSociais' => $totalInternamentos ? round($casosSociais / $totalInternamentos * 100, 1) : 0,
         ];
 
         // ---------------------------------------------------------------
         // Séries temporais (por mês)
         // ---------------------------------------------------------------
         $internamentosPorMes = (clone $internamentoQuery)
-            ->selectRaw("DATE_FORMAT(data_entrada, '%Y-%m') as mes, COUNT(*) as total, AVG(dias_internamento) as media_dias")
-            ->groupByRaw("DATE_FORMAT(data_entrada, '%Y-%m')")
+            ->selectRaw("DATE_FORMAT(data_saida, '%Y-%m') as mes, COUNT(*) as total, AVG(dias_internamento) as media_dias")
+            ->groupByRaw("DATE_FORMAT(data_saida, '%Y-%m')")
             ->orderBy('mes')
             ->get()
             ->map(fn($r) => [
@@ -125,6 +133,72 @@ class AnaliticaController extends Controller
                 'ambulatorio' => (int) $r->ambulatorio,
                 'internamento' => (int) $r->internamento,
             ]);
+
+        // ---------------------------------------------------------------
+        // Avaliação: Geral (operados ou não) vs. Operados
+        // "Cirúrgica" = mesma métrica calculada só sobre o subconjunto com
+        // bloco operatório associado.
+        // ---------------------------------------------------------------
+        $operadosIds = DB::table('bloco_operatorios')
+            ->whereIn('internamento_id', $internamentoIds)
+            ->distinct()
+            ->pluck('internamento_id');
+
+        $avaliarSegmento = function ($ids) {
+            $total = $ids->count();
+
+            if ($total === 0) {
+                return [
+                    'total' => 0,
+                    'mediaDiasInternamento' => 0,
+                    'taxaMortalidade' => 0,
+                    'taxaMortalidadeAposAlta' => 0,
+                    'porOrigem' => collect(),
+                    'porDestino' => collect(),
+                ];
+            }
+
+            $falecidos = DB::table('internamentos')->whereIn('id', $ids)->where('falecido', 1)->count();
+            $falecidosAposAlta = DB::table('internamentos')->whereIn('id', $ids)->where('falecido_apos_alta', 1)->count();
+            $mediaDias = DB::table('internamentos')->whereIn('id', $ids)->avg('dias_internamento');
+
+            $porOrigem = DB::table('internamentos')
+                ->join('origems', 'origems.id', '=', 'internamentos.origem_id')
+                ->whereIn('internamentos.id', $ids)
+                ->selectRaw('origems.nome, COUNT(*) as total')
+                ->groupBy('origems.id', 'origems.nome')
+                ->orderByDesc('total')
+                ->get();
+
+            $porDestino = DB::table('internamentos')
+                ->join('destinos', 'destinos.id', '=', 'internamentos.destino_id')
+                ->whereIn('internamentos.id', $ids)
+                ->selectRaw('destinos.nome, COUNT(*) as total')
+                ->groupBy('destinos.id', 'destinos.nome')
+                ->orderByDesc('total')
+                ->get();
+
+            return [
+                'total' => $total,
+                'mediaDiasInternamento' => round((float) $mediaDias, 1),
+                'taxaMortalidade' => round($falecidos / $total * 100, 1),
+                'taxaMortalidadeAposAlta' => round($falecidosAposAlta / $total * 100, 1),
+                'porOrigem' => $porOrigem,
+                'porDestino' => $porDestino,
+            ];
+        };
+
+        $segmentoGeral = $avaliarSegmento($internamentoIds);
+        $segmentoOperados = $avaliarSegmento($operadosIds);
+
+        $avaliacao = [
+            'geral' => [
+                ...$segmentoGeral,
+                'taxaMortalidadeCirurgica' => $segmentoOperados['taxaMortalidade'],
+                'taxaMortalidadeAposAltaCirurgica' => $segmentoOperados['taxaMortalidadeAposAlta'],
+            ],
+            'operados' => $segmentoOperados,
+        ];
 
         // ---------------------------------------------------------------
         // Distribuições — Internamentos
@@ -167,10 +241,15 @@ class AnaliticaController extends Controller
         $porClavienDindo = DB::table('internamentos')
             ->join('clavien_dindos', 'clavien_dindos.id', '=', 'internamentos.clavien_dindo_id')
             ->whereIn('internamentos.id', $internamentoIds)
-            ->selectRaw('clavien_dindos.nome, COUNT(*) as total')
+            ->selectRaw('clavien_dindos.id, clavien_dindos.nome, COUNT(*) as total')
             ->groupBy('clavien_dindos.id', 'clavien_dindos.nome')
-            ->orderByDesc('total')
-            ->get();
+            ->orderBy('clavien_dindos.id')
+            ->get()
+            ->map(fn($r) => [
+                'nome' => $r->nome,
+                'total' => (int) $r->total,
+                'pct' => $totalInternamentos ? round($r->total / $totalInternamentos * 100, 1) : 0,
+            ]);
 
         $porSexo = DB::table('internamentos')
             ->join('patients', 'patients.id', '=', 'internamentos.patient_id')
@@ -360,6 +439,7 @@ class AnaliticaController extends Controller
 
         return Inertia::render('Analitica/Index', [
             'kpis' => $kpis,
+            'avaliacao' => $avaliacao,
             'internamentosPorMes' => $internamentosPorMes,
             'cirurgiasPorMes' => $cirurgiasPorMes,
             'porEquipa' => $porEquipa,

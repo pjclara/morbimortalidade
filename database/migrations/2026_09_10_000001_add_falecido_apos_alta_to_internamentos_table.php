@@ -20,7 +20,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        if (!Schema::hasColumn('internamentos', 'falecido_apos_alta')) {
+        if (Schema::hasTable('internamentos') && !Schema::hasColumn('internamentos', 'falecido_apos_alta')) {
             Schema::table('internamentos', function (Blueprint $table) {
                 $table->boolean('falecido_apos_alta')->default(false)->after('falecido');
             });
@@ -29,8 +29,10 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::table('internamentos', function (Blueprint $table) {
-            $table->dropColumn('falecido_apos_alta');
-        });
+        if (Schema::hasTable('internamentos') && Schema::hasColumn('internamentos', 'falecido_apos_alta')) {
+            Schema::table('internamentos', function (Blueprint $table) {
+                $table->dropColumn('falecido_apos_alta');
+            });
+        }
     }
 };

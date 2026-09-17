@@ -12,31 +12,43 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('internamentos', function (Blueprint $table) {
-            $table->index('data_entrada');
-        });
+        if (Schema::hasTable('internamentos')) {
+            Schema::table('internamentos', function (Blueprint $table) {
+                $table->index('data_entrada');
+            });
+        }
 
-        Schema::table('bloco_operatorios', function (Blueprint $table) {
-            $table->index('data_intervencao');
-        });
+        if (Schema::hasTable('bloco_operatorios')) {
+            Schema::table('bloco_operatorios', function (Blueprint $table) {
+                $table->index('data_intervencao');
+            });
+        }
 
-        Schema::table('diagnostico_internamento', function (Blueprint $table) {
-            $table->index('principal');
-        });
+        if (Schema::hasTable('diagnostico_internamento')) {
+            Schema::table('diagnostico_internamento', function (Blueprint $table) {
+                $table->index('principal');
+            });
+        }
     }
 
     public function down(): void
     {
-        Schema::table('internamentos', function (Blueprint $table) {
-            $table->dropIndex(['data_entrada']);
-        });
+        if (Schema::hasTable('internamentos')) {
+            Schema::table('internamentos', function (Blueprint $table) {
+                $table->dropIndex(['data_entrada']);
+            });
+        }
 
-        Schema::table('bloco_operatorios', function (Blueprint $table) {
-            $table->dropIndex(['data_intervencao']);
-        });
+        if (Schema::hasTable('bloco_operatorios')) {
+            Schema::table('bloco_operatorios', function (Blueprint $table) {
+                $table->dropIndex(['data_intervencao']);
+            });
+        }
 
-        Schema::table('diagnostico_internamento', function (Blueprint $table) {
-            $table->dropIndex(['principal']);
-        });
+        if (Schema::hasTable('diagnostico_internamento')) {
+            Schema::table('diagnostico_internamento', function (Blueprint $table) {
+                $table->dropIndex(['principal']);
+            });
+        }
     }
 };

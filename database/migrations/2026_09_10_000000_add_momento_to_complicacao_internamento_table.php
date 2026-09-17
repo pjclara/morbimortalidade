@@ -20,7 +20,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        if (!Schema::hasColumn('complicacao_internamento', 'momento')) {
+        if (Schema::hasTable('complicacao_internamento') && !Schema::hasColumn('complicacao_internamento', 'momento')) {
             Schema::table('complicacao_internamento', function (Blueprint $table) {
                 $table->string('momento', 20)->nullable()->after('complicacao_id');
             });
@@ -29,8 +29,10 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::table('complicacao_internamento', function (Blueprint $table) {
-            $table->dropColumn('momento');
-        });
+        if (Schema::hasTable('complicacao_internamento') && Schema::hasColumn('complicacao_internamento', 'momento')) {
+            Schema::table('complicacao_internamento', function (Blueprint $table) {
+                $table->dropColumn('momento');
+            });
+        }
     }
 };

@@ -134,6 +134,17 @@ class InternamentoController extends Controller
             }
         }
 
+        /* -------------------------
+        FILTRO: COM/SEM COMPLICAÇÕES
+        --------------------------*/
+        if ($request->filled('com_complicacoes')) {
+            if ($request->com_complicacoes === '1') {
+                $query->has('complicacaoInternamentos');
+            } elseif ($request->com_complicacoes === '0') {
+                $query->doesntHave('complicacaoInternamentos');
+            }
+        }
+
 
 
         /* -------------------------
@@ -159,6 +170,7 @@ class InternamentoController extends Controller
             'falecido',
             'falecido_apos_alta',
             'bloco_operatorio',
+            'com_complicacoes',
         ]);
 
         // filtros dinâmicos (ex: datas, tipo_filtro, bloco, etc.)

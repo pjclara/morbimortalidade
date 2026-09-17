@@ -38,6 +38,7 @@ interface Props {
         falecido?: boolean;
         falecido_apos_alta?: boolean;
         bloco_operatorio?: '0' | '1';
+        com_complicacoes?: '0' | '1';
     };
     responsavel_options: Record<string, number>;
 }
@@ -176,7 +177,6 @@ export default function Index({ items, filters, responsavel_options }: Props) {
 
     const isSuperAdmin = auth.user?.roles?.includes('super_admin');
 
-
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Internamento">
@@ -188,10 +188,7 @@ export default function Index({ items, filters, responsavel_options }: Props) {
                 />
             </Head>
 
-            <div
-                className="flex h-full flex-1 flex-col gap-5 p-4"
-                style={{ fontFamily: "'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif" }}
-            >
+            <div className="flex h-full flex-1 flex-col gap-5 p-4" style={{ fontFamily: "'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif" }}>
                 {/* Cabeçalho */}
                 <div className="flex items-end justify-between border-b pb-3" style={{ borderColor: LINE }}>
                     <div>
@@ -323,7 +320,24 @@ export default function Index({ items, filters, responsavel_options }: Props) {
                             </select>
                         </div>
 
-                        <button onClick={clearFilters} className="px-1 py-1.5 text-sm font-medium underline decoration-[#C9D1CB] underline-offset-4 hover:text-[#17241F]" style={{ color: '#5B685F' }}>
+                        <div className="flex flex-col gap-1">
+                            <span className={fieldLabel}>Complicações</span>
+                            <select
+                                className={fieldInput}
+                                defaultValue={currentFilters.com_complicacoes ?? ''}
+                                onChange={(e) => handleFilterChange('com_complicacoes', e.target.value)}
+                            >
+                                <option value="">Todos</option>
+                                <option value="1">Com complicações</option>
+                                <option value="0">Sem complicações</option>
+                            </select>
+                        </div>
+
+                        <button
+                            onClick={clearFilters}
+                            className="px-1 py-1.5 text-sm font-medium underline decoration-[#C9D1CB] underline-offset-4 hover:text-[#17241F]"
+                            style={{ color: '#5B685F' }}
+                        >
                             Limpar filtros
                         </button>
                     </div>
@@ -343,6 +357,9 @@ export default function Index({ items, filters, responsavel_options }: Props) {
                                     </th>
                                     <th className="px-4 py-2.5 font-medium" style={{ color: '#45524C' }}>
                                         Saída
+                                    </th>
+                                    <th className="px-4 py-2.5 font-medium" style={{ color: '#45524C' }}>
+                                        Dias de internamento
                                     </th>
                                     <th className="px-4 py-2.5 font-medium" style={{ color: '#45524C' }}>
                                         Destino
@@ -378,11 +395,23 @@ export default function Index({ items, filters, responsavel_options }: Props) {
                                             >
                                                 {i.patient?.processo ?? '-'}
                                             </td>
-                                            <td className="px-4 py-2.5 tabular-nums" style={{ fontFamily: "'IBM Plex Mono', ui-monospace, monospace" }}>
+                                            <td
+                                                className="px-4 py-2.5 tabular-nums"
+                                                style={{ fontFamily: "'IBM Plex Mono', ui-monospace, monospace" }}
+                                            >
                                                 {i.data_entrada ?? '-'}
                                             </td>
-                                            <td className="px-4 py-2.5 tabular-nums" style={{ fontFamily: "'IBM Plex Mono', ui-monospace, monospace" }}>
+                                            <td
+                                                className="px-4 py-2.5 tabular-nums"
+                                                style={{ fontFamily: "'IBM Plex Mono', ui-monospace, monospace" }}
+                                            >
                                                 {i.data_saida ?? '-'}
+                                            </td>
+                                            <td
+                                                className="px-4 py-2.5 tabular-nums"
+                                                style={{ fontFamily: "'IBM Plex Mono', ui-monospace, monospace" }}
+                                            >
+                                                {i.dias_internamento ?? '-'}
                                             </td>
                                             <td className="px-4 py-2.5">
                                                 {i.destino?.nome ?? '-'}
@@ -413,7 +442,7 @@ export default function Index({ items, filters, responsavel_options }: Props) {
                                             <td className="px-4 py-2.5 text-right">
                                                 <button
                                                     onClick={() => openModal(i)}
-                                                    className="rounded-[4px] border px-3 py-1 text-sm font-medium transition text-white cursor-pointer"
+                                                    className="cursor-pointer rounded-[4px] border px-3 py-1 text-sm font-medium text-white transition"
                                                     style={{ borderColor: CLINICAL, color: CLINICAL }}
                                                     onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = CLINICAL)}
                                                     onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
@@ -442,12 +471,11 @@ export default function Index({ items, filters, responsavel_options }: Props) {
                                         <a
                                             key={index}
                                             href={link.url ?? undefined}
-                                            className={'rounded-[4px] px-3 py-1 text-sm transition-colors' + (isDisabled ? ' pointer-events-none opacity-40' : ' hover:bg-[#E3EFEA]')}
-                                            style={
-                                                isActive
-                                                    ? { backgroundColor: CLINICAL, color: '#fff' }
-                                                    : { color: '#45524C' }
+                                            className={
+                                                'rounded-[4px] px-3 py-1 text-sm transition-colors' +
+                                                (isDisabled ? ' pointer-events-none opacity-40' : ' hover:bg-[#E3EFEA]')
                                             }
+                                            style={isActive ? { backgroundColor: CLINICAL, color: '#fff' } : { color: '#45524C' }}
                                             dangerouslySetInnerHTML={{ __html: link.label }}
                                         />
                                     );
