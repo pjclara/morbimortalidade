@@ -56,7 +56,6 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('clavien_dindos', ClavienDindoController::class);
     Route::resource('complicacao_internamento', ComplicacaoInternamentoController::class);
     Route::resource('complicacao_resolucao', ComplicacaoResolucaoController::class);
-    Route::resource('complicacaos', ComplicacaoController::class);
     Route::resource('destinos', DestinoController::class);
     Route::resource('diagnostico_internamento', DiagnosticoInternamentoController::class);
     Route::resource('diagnosticos', DiagnosticoController::class);
@@ -72,7 +71,6 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('patients', PatientController::class);
     Route::resource('permissions', PermissionController::class);
     Route::resource('procedimentos', ProcedimentoController::class);
-    Route::resource('resolucaos', ResolucaoController::class);
     Route::resource('roles', RoleController::class);
     Route::resource('sexos', SexoController::class);
     Route::resource('tipo_de_cirurgias', TipoDeCirurgiaController::class);
@@ -99,6 +97,18 @@ Route::middleware(['auth'])->group(function () {
             'update' => 'admin.users.update',
             'destroy' => 'admin.users.destroy',
         ]);
+
+    Route::middleware(['role:super_admin'])->group(function () {
+        Route::get('/admin/complicacoes', [ComplicacaoController::class, 'index'])->name('admin.complicacoes.index');
+        Route::post('/admin/complicacoes', [ComplicacaoController::class, 'store'])->name('admin.complicacoes.store');
+        Route::put('/admin/complicacoes/{complicacao}', [ComplicacaoController::class, 'update'])->name('admin.complicacoes.update');
+        Route::delete('/admin/complicacoes/{complicacao}', [ComplicacaoController::class, 'destroy'])->name('admin.complicacoes.destroy');
+
+        Route::get('/admin/resolucoes', [ResolucaoController::class, 'index'])->name('admin.resolucoes.index');
+        Route::post('/admin/resolucoes', [ResolucaoController::class, 'store'])->name('admin.resolucoes.store');
+        Route::put('/admin/resolucoes/{resolucao}', [ResolucaoController::class, 'update'])->name('admin.resolucoes.update');
+        Route::delete('/admin/resolucoes/{resolucao}', [ResolucaoController::class, 'destroy'])->name('admin.resolucoes.destroy');
+    });
 
     Route::get('/distribuicao', [DistribuicaoController::class, 'index'])->middleware(['auth']);;
     Route::get('/distribuicao/simular', [DistribuicaoController::class, 'simular'])->middleware(['auth']);;

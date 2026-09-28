@@ -41,6 +41,18 @@ class MenuService
                 'icon' => 'UserCheck',
                 'roles' => ['super_admin'],
             ],
+            [
+                'title' => 'Complicações',
+                'href' => '/admin/complicacoes',
+                'icon' => 'Activity',
+                'roles' => ['super_admin'],
+            ],
+            [
+                'title' => 'Resoluções',
+                'href' => '/admin/resolucoes',
+                'icon' => 'CheckCircle2',
+                'roles' => ['super_admin'],
+            ],
         ];
 
         return collect($menu)->filter(function ($item) use ($user) {
