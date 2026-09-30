@@ -106,7 +106,7 @@ class InternamentoController extends Controller
         FILTRO: CLAVIEN-DINDO
         --------------------------*/
         if ($request->filled('clavien_dindo_id')) {
-            $query->where('clavien_dindo_id', $request->clavien_dindo_id);
+            $query->whereIn('clavien_dindo_id', (array) $request->input('clavien_dindo_id'));
         }
 
         /* -------------------------

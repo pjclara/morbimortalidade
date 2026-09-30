@@ -34,13 +34,14 @@ interface Props {
         data_entrada_ate?: string;
         destino_id?: number;
         responsavel_id?: number | null;
-        clavien_dindo_id?: number;
+        clavien_dindo_id?: string | string[];
         falecido?: boolean;
         falecido_apos_alta?: boolean;
         bloco_operatorio?: '0' | '1';
         com_complicacoes?: '0' | '1';
     };
     responsavel_options: Record<string, number>;
+    clavien_options?: Record<string, number>;
 }
 
 // Tokens locais ao módulo de Internamento — um registo clínico denso, não um
@@ -58,7 +59,7 @@ const fieldLabel = 'text-xs font-medium tracking-normal text-[#45524C]';
 const fieldInput =
     'rounded-[4px] border border-[#C9D1CB] bg-white px-2.5 py-1.5 text-sm text-[#17241F] outline-none transition focus:border-[#1E6F5C] focus:ring-2 focus:ring-[#1E6F5C]/20 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100';
 
-export default function Index({ items, filters, responsavel_options }: Props) {
+export default function Index({ items, filters, responsavel_options, clavien_options }: Props) {
     const [selected, setSelected] = useState<any>(null);
     const currentFilters = filters ?? {};
 
@@ -79,6 +80,16 @@ export default function Index({ items, filters, responsavel_options }: Props) {
             [key]: value || undefined,
         });
         toast.success('Filtros aplicados com sucesso!');
+    }
+
+    const selectedClavien: string[] = [currentFilters.clavien_dindo_id ?? []].flat().map(String);
+
+    function toggleClavien(id: string) {
+        const next = selectedClavien.includes(id) ? selectedClavien.filter((v) => v !== id) : [...selectedClavien, id];
+        applyFilter({
+            ...currentFilters,
+            clavien_dindo_id: next.length ? next : undefined,
+        });
     }
 
     function clearFilters() {
@@ -277,6 +288,27 @@ export default function Index({ items, filters, responsavel_options }: Props) {
                                     </option>
                                 ))}
                             </select>
+                        </div>
+
+                        <div className="flex flex-col gap-1">
+                            <span className={fieldLabel}>Clavien-Dindo</span>
+                            <details className="relative">
+                                <summary className={`${fieldInput} cursor-pointer list-none`}>
+                                    {selectedClavien.length === 0 ? 'Todos' : `${selectedClavien.length} selecionado(s)`}
+                                </summary>
+                                <div className="absolute z-20 mt-1 flex min-w-full flex-col gap-1 rounded-[4px] border border-[#C9D1CB] bg-white p-2 shadow-md dark:border-neutral-700 dark:bg-neutral-900">
+                                    {Object.entries(clavien_options ?? {}).map(([nome, id]) => (
+                                        <label key={id} className="flex items-center gap-2 whitespace-nowrap text-sm">
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedClavien.includes(String(id))}
+                                                onChange={() => toggleClavien(String(id))}
+                                            />
+                                            {nome}
+                                        </label>
+                                    ))}
+                                </div>
+                            </details>
                         </div>
 
                         <div className="flex flex-col gap-1">
