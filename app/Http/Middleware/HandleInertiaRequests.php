@@ -52,6 +52,12 @@ class HandleInertiaRequests extends Middleware
                     ]
                     : null,
             ],
+            // redirect()->back()->with(['imported' => ..., 'importErrors' => ...])
+            // flasha estes valores para a sessão; sem partilhá-los aqui, a página
+            // de destino (ex.: Internamento/Index) nunca os recebe como props e o
+            // toast de importação mostra sempre "undefined".
+            'imported' => fn () => $request->session()->get('imported'),
+            'importErrors' => fn () => $request->session()->get('importErrors'),
         ]);
     }
 }
