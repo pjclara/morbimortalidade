@@ -158,7 +158,7 @@ class BlocoOperatorioImportService
 
         $nomePrincipal = trim($row['PROCEDIMENTO PRINCIPAL'] ?? '');;
 
-        $procedimentoIds = [];
+        $pivotData = [];
 
         foreach ($codigos as $codigoRaw) {
 
@@ -167,25 +167,29 @@ class BlocoOperatorioImportService
                 continue;
             }
 
+            $descricao = $nomePrincipal !== '' ? $nomePrincipal : $codigo;
+
             $procedimentoId = $this->procedimentos[$codigo] ?? null;
 
             if (!$procedimentoId) {
                 $procedimento = Procedimento::create([
                     'codigo' => $codigo,
-                    'nome'   => $nomePrincipal !== '' ? $nomePrincipal : $codigo,
+                    'nome'   => $descricao,
                 ]);
 
                 $procedimentoId = $procedimento->id;
                 $this->procedimentos[$codigo] = $procedimentoId;
             }
 
-            $procedimentoIds[] = $procedimentoId;
+            // A coluna "descricao" da tabela pivô é NOT NULL sem default,
+            // por isso tem de ser sempre preenchida no sync.
+            $pivotData[$procedimentoId] = ['descricao' => $descricao];
         }
 
-        if (!empty($procedimentoIds)) {
+        if (!empty($pivotData)) {
             // Um único sync com todos os ids da linha, em vez de um por código
             // (cada syncWithoutDetaching faz o seu próprio round-trip à BD).
-            $blocoOperatorio->procedimentos()->syncWithoutDetaching($procedimentoIds);
+            $blocoOperatorio->procedimentos()->syncWithoutDetaching($pivotData);
         }
     }
 }
