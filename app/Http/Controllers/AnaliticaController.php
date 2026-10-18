@@ -20,9 +20,9 @@ class AnaliticaController extends Controller
     // ficava lenta a agregar anos de internamentos/cirurgias de uma vez.
     private const PERIODO_OMISSAO_MESES = 3;
 
-    // colocar data de inico 01-10-2025 e fim 31-12-2025 por defeito
-    private const DATA_INICIO_PADRAO = '2025-10-01';
-    private const DATA_FIM_PADRAO = '2025-12-31';
+    // colocar data de inico 01-01-2026 e fim 31-03-2026 por defeito
+    private const DATA_INICIO_PADRAO = '2026-01-01';
+    private const DATA_FIM_PADRAO = '2026-03-31';
     // usar datas por defeito se não forem fornecidas
 
     private const USAR_DATAS_PADRAO = true;
