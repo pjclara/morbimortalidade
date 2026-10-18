@@ -62,8 +62,8 @@ class InternamentoController extends Controller
 
         // Se o utilizador NÃO enviou datas → usar intervalo padrão
         if (!$de || !$ate) {
-            $de = '2025-10-01';
-            $ate = '2025-12-31';
+            $de = '2026-01-01';
+            $ate = '2026-03-31';
         }
 
         // Garantir que a data inicial é menor que a final
