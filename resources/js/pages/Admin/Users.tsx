@@ -16,6 +16,10 @@ export default function Users() {
         });
     };
 
+    const toggleAtivo = (userId: number) => {
+        router.post(`/admin/users/${userId}/toggle-ativo`, {}, { preserveScroll: true });
+    };
+
     const openCreate = () => {
         setSelectedUser(null);
         setOpenModal(true);
@@ -48,16 +52,28 @@ export default function Users() {
                         <tr className="border-b bg-neutral-100 dark:bg-neutral-800">
                             <th className="p-2 text-left">Nome</th>
                             <th className="p-2 text-left">Email</th>
+                            <th className="p-2 text-left">Estado</th>
                             <th className="p-2 text-left">Roles</th>
                             <th className="p-2 text-left">Ações</th>
                         </tr>
                     </thead>
 
                     <tbody>
-                        {users.data.map((user: any) => (
+                        {users.map((user: any) => (
                             <tr key={user.id} className="border-b">
                                 <td className="p-2">{user.name}</td>
                                 <td className="p-2">{user.email}</td>
+
+                                <td className="p-2">
+                                    <button
+                                        onClick={() => toggleAtivo(user.id)}
+                                        className={`px-3 py-1 rounded text-white ${
+                                            user.ativo ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'
+                                        }`}
+                                    >
+                                        {user.ativo ? 'Ativo' : 'Inativo'}
+                                    </button>
+                                </td>
 
                                 <td className="p-2">
                                     <div className="flex gap-2 flex-wrap">

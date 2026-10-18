@@ -90,6 +90,7 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/admin/users', [UserRoleController::class, 'index'])->name('admin.users');
     Route::post('/admin/users/{user}/roles', [UserRoleController::class, 'updateRoles'])->name('admin.users.roles');
+    Route::post('/admin/users/{user}/toggle-ativo', [UserRoleController::class, 'toggleAtivo'])->name('admin.users.toggle-ativo');
     Route::resource('admin/users', UserController::class)
         ->only(['store', 'update', 'destroy'])
         ->names([
