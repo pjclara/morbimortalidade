@@ -40,11 +40,23 @@ class InternamentoImportService
                     $this->validarLinha($row);
 
 
-                    if (isset($this->episodios[$row['INT_EPISODIO']])) {
+                    $internamentoId = $this->episodios[$row['INT_EPISODIO']] ?? null;
+
+                    if ($internamentoId) {
+                        // Internamento já existe: não o recriar, só atualizar
+                        // os diagnósticos com o que vier nesta linha.
+                        DB::transaction(function () use ($row, $internamentoId, &$importados) {
+                            $internamento = Internamento::findOrFail($internamentoId);
+
+                            $this->addDiagnosticos($row, $internamento);
+
+                            $importados++;
+                        });
+
                         return;
                     }
 
-                    DB::transaction(function () use ($row, $importados) {
+                    DB::transaction(function () use ($row, &$importados) {
 
                         $patient = $this->obterPaciente($row);
                         $internamento = $this->criarInternamento($row, $patient);
@@ -109,8 +121,9 @@ class InternamentoImportService
             'falecido'            => $destinoId == 3,
         ]);
 
-        // Atualiza a cache para evitar importar o mesmo episódio novamente
-        $this->episodios[$row['INT_EPISODIO']] = true;
+        // Atualiza a cache com o id real, para que linhas seguintes do mesmo
+        // ficheiro com o mesmo episódio consigam encontrar este internamento.
+        $this->episodios[$row['INT_EPISODIO']] = $internamento->id;
 
         return $internamento;
     }
