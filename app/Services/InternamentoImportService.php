@@ -125,6 +125,11 @@ class InternamentoImportService
         // Exemplo: "K35.2; K36; K37"
         $lista = explode(';', $row['COD_DIAGNOSTICO']);
 
+        $descricao = trim($row['DES_DIAGNOSTICO'] ?? '');
+
+        // COD_CLASSIFICACAO == 1 identifica o diagnóstico principal do internamento.
+        $principal = trim((string) ($row['COD_CLASSIFICACAO'] ?? '')) === '1';
+
         foreach ($lista as $item) {
 
             $codigo = trim($item);
@@ -138,9 +143,15 @@ class InternamentoImportService
 
             // Criar diagnóstico se não existir
             if (!$diagnosticoId) {
+                // "nome", "codigo_pai" e "descricao" são NOT NULL sem default na BD.
+                // O Excel não traz um código pai, por isso fica vazio.
+                $nomeDescricao = $descricao !== '' ? $descricao : $codigo;
+
                 $diagnostico = Diagnostico::create([
                     'codigo'     => $codigo,
-                    'descricao'  => $codigo, // ou outra coluna do Excel
+                    'codigo_pai' => '',
+                    'nome'       => $nomeDescricao,
+                    'descricao'  => $nomeDescricao,
                 ]);
 
                 // Atualizar cache
@@ -148,8 +159,11 @@ class InternamentoImportService
                 $diagnosticoId = $diagnostico->id;
             }
 
-            // Associar ao internamento (evita duplicados)
-            $internamento->diagnosticos()->syncWithoutDetaching([$diagnosticoId]);
+            // Associar ao internamento (evita duplicados), marcando como
+            // principal quando a linha trouxer COD_CLASSIFICACAO == 1.
+            $internamento->diagnosticos()->syncWithoutDetaching([
+                $diagnosticoId => ['principal' => $principal],
+            ]);
         }
     }
 }
