@@ -412,9 +412,14 @@ class InternamentoController extends Controller
         set_time_limit(300);
 
         $path = $request->file('file')->store('imports');
+        $fullPath = storage_path("app/private/{$path}");
+
+        if ('xlsx' === strtolower($request->file('file')->getClientOriginalExtension())) {
+            \App\Support\XlsxStyleSanitizer::sanitize($fullPath);
+        }
 
         $service = new \App\Services\InternamentoImportService();
-        $result = $service->import(storage_path("app/private/{$path}"));
+        $result = $service->import($fullPath);
 
         return back()->with([
             'imported' => $result['imported'],
@@ -432,9 +437,14 @@ class InternamentoController extends Controller
         set_time_limit(300);
 
         $path = $request->file('file')->store('imports');
+        $fullPath = storage_path("app/private/{$path}");
+
+        if ('xlsx' === strtolower($request->file('file')->getClientOriginalExtension())) {
+            \App\Support\XlsxStyleSanitizer::sanitize($fullPath);
+        }
 
         $service = new BlocoOperatorioImportService();
-        $result = $service->import(storage_path("app/private/{$path}"));
+        $result = $service->import($fullPath);
 
         return back()->with([
             'imported' => $result['imported'],
