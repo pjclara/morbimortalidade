@@ -9,14 +9,34 @@ use Spatie\Permission\Models\Role;
 
 class UserController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         // Lista todos (ativos e inativos) para se poder reativar quem está desativado.
-        $users = User::with('roles')->orderBy('name')->paginate(20);
+        $query = User::with('roles')->orderBy('name');
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('estado')) {
+            $query->where('ativo', $request->estado === 'ativo' ? 1 : 0);
+        }
+
+        if ($request->filled('role')) {
+            $query->whereHas('roles', fn($q) => $q->where('name', $request->role));
+        }
+
+        $users = $query->paginate(20)->withQueryString();
         $roles = Role::all();
+
         return Inertia::render('Admin/Users', [
             'users' => $users,
-            'roles' => $roles
+            'roles' => $roles,
+            'filters' => $request->only(['search', 'estado', 'role']),
         ]);
     }
 

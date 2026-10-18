@@ -5,10 +5,22 @@ import { useState } from 'react';
 import CreateOrUpdateModal from '@/components/user/CreateOrUpdateModal';
 
 export default function Users() {
-    const { users, roles } = usePage().props;
+    const { users, roles, filters } = usePage().props as any;
 
     const [openModal, setOpenModal] = useState(false);
     const [selectedUser, setSelectedUser] = useState(null);
+
+    const [search, setSearch] = useState(filters?.search ?? '');
+    const [estado, setEstado] = useState(filters?.estado ?? '');
+    const [role, setRole] = useState(filters?.role ?? '');
+
+    const aplicarFiltros = (novosFiltros: Record<string, string>) => {
+        router.get(
+            window.location.pathname,
+            { search, estado, role, ...novosFiltros },
+            { preserveState: true, preserveScroll: true, replace: true },
+        );
+    };
 
     const updateRoles = (userId: number, selectedRoles: string[]) => {
         router.post(`/admin/users/${userId}/roles`, {
@@ -44,6 +56,62 @@ export default function Users() {
                         className="px-4 py-2 bg-green-600 text-white rounded"
                     >
                         Novo Utilizador
+                    </button>
+                </div>
+
+                <div className="flex flex-wrap items-end gap-3 rounded-lg border bg-neutral-50 p-4 dark:bg-neutral-800">
+                    <div>
+                        <label className="block text-xs text-gray-500">Procurar</label>
+                        <input
+                            type="text"
+                            placeholder="Nome ou email"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && aplicarFiltros({ search })}
+                            className="mt-1 rounded border-gray-300 p-2"
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-xs text-gray-500">Estado</label>
+                        <select
+                            value={estado}
+                            onChange={(e) => {
+                                setEstado(e.target.value);
+                                aplicarFiltros({ estado: e.target.value });
+                            }}
+                            className="mt-1 rounded border-gray-300 p-2"
+                        >
+                            <option value="">Todos</option>
+                            <option value="ativo">Ativos</option>
+                            <option value="inativo">Inativos</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label className="block text-xs text-gray-500">Perfil</label>
+                        <select
+                            value={role}
+                            onChange={(e) => {
+                                setRole(e.target.value);
+                                aplicarFiltros({ role: e.target.value });
+                            }}
+                            className="mt-1 rounded border-gray-300 p-2"
+                        >
+                            <option value="">Todos</option>
+                            {roles.map((r: any) => (
+                                <option key={r.id} value={r.name}>
+                                    {r.name}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <button
+                        onClick={() => aplicarFiltros({ search })}
+                        className="rounded bg-neutral-700 px-4 py-2 text-white"
+                    >
+                        Filtrar
                     </button>
                 </div>
 
@@ -115,6 +183,34 @@ export default function Users() {
                         ))}
                     </tbody>
                 </table>
+
+                <div className="flex items-center justify-between text-sm text-gray-600">
+                    <span>
+                        A mostrar {users.from ?? 0}–{users.to ?? 0} de {users.total ?? 0} utilizadores
+                    </span>
+
+                    <div className="inline-flex gap-1">
+                        {(users.links ?? []).map((link: any, index: number) => {
+                            const isDisabled = link.url === null;
+
+                            return (
+                                <button
+                                    key={index}
+                                    disabled={isDisabled}
+                                    onClick={() => link.url && router.get(link.url, {}, { preserveState: true, preserveScroll: true })}
+                                    className={`rounded px-3 py-1 ${
+                                        link.active
+                                            ? 'bg-neutral-700 text-white'
+                                            : isDisabled
+                                              ? 'cursor-not-allowed opacity-40'
+                                              : 'border hover:bg-neutral-100 dark:hover:bg-neutral-800'
+                                    }`}
+                                    dangerouslySetInnerHTML={{ __html: link.label }}
+                                />
+                            );
+                        })}
+                    </div>
+                </div>
 
             </div>
 

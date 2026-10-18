@@ -9,13 +9,33 @@ use Inertia\Inertia;
 
 class UserRoleController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         // Mesmo componente que UserController::index(), por isso tem de
-        // devolver "users" no mesmo formato paginado (users.data).
+        // devolver "users" no mesmo formato paginado (users.data) e aceitar
+        // os mesmos filtros.
+        $query = User::with('roles')->orderBy('name');
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('estado')) {
+            $query->where('ativo', $request->estado === 'ativo' ? 1 : 0);
+        }
+
+        if ($request->filled('role')) {
+            $query->whereHas('roles', fn($q) => $q->where('name', $request->role));
+        }
+
         return Inertia::render('Admin/Users', [
-            'users' => User::with('roles')->orderBy('name')->paginate(20),
+            'users' => $query->paginate(20)->withQueryString(),
             'roles' => Role::all(),
+            'filters' => $request->only(['search', 'estado', 'role']),
         ]);
     }
 
