@@ -11,7 +11,8 @@ class UserController extends Controller
 {
     public function index()
     {
-        $users = User::where('ativo', 1)->with('roles')->paginate(20);
+        // Lista todos (ativos e inativos) para se poder reativar quem está desativado.
+        $users = User::with('roles')->orderBy('name')->paginate(20);
         $roles = Role::all();
         return Inertia::render('Admin/Users', [
             'users' => $users,

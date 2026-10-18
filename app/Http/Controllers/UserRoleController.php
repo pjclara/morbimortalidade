@@ -11,8 +11,10 @@ class UserRoleController extends Controller
 {
     public function index()
     {
+        // Mesmo componente que UserController::index(), por isso tem de
+        // devolver "users" no mesmo formato paginado (users.data).
         return Inertia::render('Admin/Users', [
-            'users' => User::with('roles')->get(),
+            'users' => User::with('roles')->orderBy('name')->paginate(20),
             'roles' => Role::all(),
         ]);
     }

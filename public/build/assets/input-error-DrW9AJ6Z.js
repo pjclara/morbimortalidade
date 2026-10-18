@@ -1,1 +1,0 @@
-import{j as n}from"./app-D5DcY8EH.js";import{a as o}from"./app-logo-icon-DNhtHVaP.js";function a({message:r,className:t="",...e}){return r?n.jsx("p",{...e,className:o("text-sm text-red-600 dark:text-red-400",t),children:r}):null}export{a as I};
