@@ -134,12 +134,19 @@ export default function Users() {
 
                                 <td className="p-2">
                                     <button
+                                        role="switch"
+                                        aria-checked={user.ativo}
+                                        title={user.ativo ? 'Clicar para desativar' : 'Clicar para ativar'}
                                         onClick={() => toggleAtivo(user.id)}
-                                        className={`px-3 py-1 rounded text-white ${
-                                            user.ativo ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'
+                                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                                            user.ativo ? 'bg-green-600' : 'bg-neutral-300 dark:bg-neutral-600'
                                         }`}
                                     >
-                                        {user.ativo ? 'Ativo' : 'Inativo'}
+                                        <span
+                                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                                user.ativo ? 'translate-x-6' : 'translate-x-1'
+                                            }`}
+                                        />
                                     </button>
                                 </td>
 
