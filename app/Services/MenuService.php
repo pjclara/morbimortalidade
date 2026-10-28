@@ -30,6 +30,12 @@ class MenuService
                 'roles' => ['super_admin', 'Interno da especialidade', 'Interno do geral'],
             ],
             [
+                'title' => 'Movimento assistencial',
+                'href' => '/relatorio-cirurgia',
+                'icon' => 'Activity',
+                'roles' => ['super_admin', 'Interno da especialidade', 'Interno do geral'],
+            ],
+            [
                 'title' => 'Utilizadores',
                 'href' => '/users',
                 'icon' => 'Users',
@@ -51,6 +57,12 @@ class MenuService
                 'title' => 'Resoluções',
                 'href' => '/admin/resolucoes',
                 'icon' => 'CheckCircle2',
+                'roles' => ['super_admin'],
+            ],
+            [
+                'title' => 'Lotação',
+                'href' => '/admin/lotacoes',
+                'icon' => 'Folder',
                 'roles' => ['super_admin'],
             ],
         ];

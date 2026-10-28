@@ -19,11 +19,13 @@ use App\Http\Controllers\GrupoDiagnosticoController;
 use App\Http\Controllers\GrupoProcedimentoController;
 use App\Http\Controllers\InternamentoController;
 use App\Http\Controllers\JobBatchController;
+use App\Http\Controllers\LotacaoController;
 use App\Http\Controllers\OrigemController;
 use App\Http\Controllers\PasswordResetTokenController;
 use App\Http\Controllers\PatientController;
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\ProcedimentoController;
+use App\Http\Controllers\RelatorioCirurgiaController;
 use App\Http\Controllers\ResolucaoController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\RolePermissionController;
@@ -49,6 +51,9 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/analitica', [AnaliticaController::class, 'index'])
         ->name('analitica');
+
+    Route::get('/relatorio-cirurgia', [RelatorioCirurgiaController::class, 'index'])
+        ->name('relatorio.cirurgia');
 
 
     Route::resource('bloco_operatorio_procedimento', BlocoOperatorioProcedimentoController::class);
@@ -109,6 +114,11 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/admin/resolucoes', [ResolucaoController::class, 'store'])->name('admin.resolucoes.store');
         Route::put('/admin/resolucoes/{resolucao}', [ResolucaoController::class, 'update'])->name('admin.resolucoes.update');
         Route::delete('/admin/resolucoes/{resolucao}', [ResolucaoController::class, 'destroy'])->name('admin.resolucoes.destroy');
+
+        Route::get('/admin/lotacoes', [LotacaoController::class, 'index'])->name('admin.lotacoes.index');
+        Route::post('/admin/lotacoes', [LotacaoController::class, 'store'])->name('admin.lotacoes.store');
+        Route::put('/admin/lotacoes/{lotacao}', [LotacaoController::class, 'update'])->name('admin.lotacoes.update');
+        Route::delete('/admin/lotacoes/{lotacao}', [LotacaoController::class, 'destroy'])->name('admin.lotacoes.destroy');
     });
 
     Route::get('/distribuicao', [DistribuicaoController::class, 'index'])->middleware(['auth']);;
