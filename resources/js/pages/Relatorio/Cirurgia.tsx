@@ -61,6 +61,10 @@ interface AnoNumeros {
     readmissoes30dias: number;
     readmissoesPelaUrgencia: number;
     altasDepoisDaAltaClinica: number;
+    diasAcimaLotacao: number;
+    pctDiasAcimaLotacao: number;
+    picoDoentesSemCama: number;
+    mediaDoentesSemCamaNosDiasAcima: number;
 }
 
 interface MesLinha {
@@ -77,6 +81,7 @@ interface PeriodoLotacaoLinha {
     saidas: number;
     demoraMedia: number;
     mortalidade: number;
+    diasAcimaLotacao: number;
 }
 
 interface DiaSemanaLinha {
@@ -458,6 +463,19 @@ export default function RelatorioCirurgia() {
                             sub={`${fmt(anoNumeros.readmissoesPelaUrgencia)}% pela Urgência`}
                         />
                         <KpiTile label="Altas depois da alta clínica" value={anoNumeros.altasDepoisDaAltaClinica} suffix="%" />
+                        <KpiTile
+                            label="Doentes à espera de cama"
+                            value={anoNumeros.pctDiasAcimaLotacao}
+                            suffix="% dos dias"
+                            tone="rose"
+                            sub={`${fmt(anoNumeros.diasAcimaLotacao)} dias acima da lotação`}
+                        />
+                        <KpiTile
+                            label="Pico sem cama própria"
+                            value={anoNumeros.picoDoentesSemCama}
+                            tone="rose"
+                            sub={`média de ${fmt(anoNumeros.mediaDoentesSemCamaNosDiasAcima)} nos dias acima da lotação`}
+                        />
                     </div>
                     <Nota>
                         <strong>Episódios</strong>: internamentos com data de saída dentro do período. <strong>Demora média</strong>: média de
@@ -466,7 +484,10 @@ export default function RelatorioCirurgia() {
                         episódios. <strong>Doentes por cama</strong>: doentes distintos no período ÷ nº médio de camas. <strong>Dia de cama
                         vazia</strong>: (dias-cama − dias-doente) ÷ nº de saídas. <strong>Readmissões a 30 dias</strong>: % de episódios cuja
                         entrada ocorre até 30 dias após a saída do episódio anterior do mesmo doente. <strong>Altas depois da alta
-                        clínica</strong>: % de episódios em que a saída real é posterior à data de alta clínica registada.
+                        clínica</strong>: % de episódios em que a saída real é posterior à data de alta clínica registada.{' '}
+                        <strong>Doentes à espera de cama</strong>: % de dias em que o censo diário (nº de doentes efetivamente internados
+                        nesse dia) ultrapassa a lotação desse dia — esses doentes em excesso não têm cama própria atribuída (maca extra,
+                        corredor, etc.). <strong>Pico sem cama própria</strong>: maior nº de doentes em excesso observado num único dia.
                     </Nota>
                 </div>
 
@@ -503,7 +524,8 @@ export default function RelatorioCirurgia() {
                                         <th className="py-1.5 pr-3 font-medium">Ocupação</th>
                                         <th className="py-1.5 pr-3 font-medium">Saídas</th>
                                         <th className="py-1.5 pr-3 font-medium">Demora média</th>
-                                        <th className="py-1.5 font-medium">Mortalidade</th>
+                                        <th className="py-1.5 pr-3 font-medium">Mortalidade</th>
+                                        <th className="py-1.5 font-medium">Dias acima da lotação</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -527,14 +549,17 @@ export default function RelatorioCirurgia() {
                                             <td className="py-1.5 pr-3" style={{ color: INK }}>
                                                 {fmt(p.demoraMedia)}
                                             </td>
-                                            <td className="py-1.5" style={{ color: ROSE }}>
+                                            <td className="py-1.5 pr-3" style={{ color: ROSE }}>
                                                 {fmt(p.mortalidade)}%
+                                            </td>
+                                            <td className="py-1.5" style={{ color: ROSE }}>
+                                                {fmt(p.diasAcimaLotacao)}
                                             </td>
                                         </tr>
                                     ))}
                                     {porPeriodoLotacao.length === 0 && (
                                         <tr>
-                                            <td colSpan={7} className="py-4 text-center" style={{ color: MUTED }}>
+                                            <td colSpan={8} className="py-4 text-center" style={{ color: MUTED }}>
                                                 Sem períodos de lotação no intervalo seleccionado.
                                             </td>
                                         </tr>
@@ -544,7 +569,8 @@ export default function RelatorioCirurgia() {
                         </div>
                         <Nota>
                             cada linha corresponde a um período definido em "Lotação"; ocupação/demora média/mortalidade recalculados só
-                            com os episódios cuja saída ocorre dentro desse período.
+                            com os episódios cuja saída ocorre dentro desse período. "Dias acima da lotação" = nº de dias desse período em
+                            que o censo diário excedeu o nº de camas (doentes à espera de cama própria).
                         </Nota>
                     </Section>
                 </div>

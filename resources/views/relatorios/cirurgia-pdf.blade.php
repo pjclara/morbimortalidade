@@ -163,6 +163,18 @@
                     <p class="kpi-value">{{ $anoNumeros['altasDepoisDaAltaClinica'] }}<span class="kpi-suffix">%</span></p>
                 </td>
             </tr>
+            <tr>
+                <td>
+                    <p class="kpi-label">Doentes à espera de cama</p>
+                    <p class="kpi-value rose">{{ $anoNumeros['pctDiasAcimaLotacao'] }}<span class="kpi-suffix">% dos dias</span></p>
+                    <p class="kpi-sub">{{ $anoNumeros['diasAcimaLotacao'] }} dias acima da lotação</p>
+                </td>
+                <td>
+                    <p class="kpi-label">Pico sem cama própria</p>
+                    <p class="kpi-value rose">{{ $anoNumeros['picoDoentesSemCama'] }}</p>
+                    <p class="kpi-sub">média de {{ $anoNumeros['mediaDoentesSemCamaNosDiasAcima'] }} nos dias acima da lotação</p>
+                </td>
+            </tr>
         </table>
         <p class="nota">Ver definição de cada indicador no glossário, no fim do documento.</p>
     </div>
@@ -208,6 +220,7 @@
                 <th>Saídas</th>
                 <th>Demora média</th>
                 <th>Mortalidade</th>
+                <th>Dias acima lotação</th>
             </tr>
             @foreach($porPeriodoLotacao as $p)
                 <tr>
@@ -218,10 +231,11 @@
                     <td>{{ number_format($p['saidas'], 0, ',', ' ') }}</td>
                     <td>{{ $p['demoraMedia'] }}</td>
                     <td class="rose">{{ $p['mortalidade'] }}%</td>
+                    <td class="rose">{{ $p['diasAcimaLotacao'] }}</td>
                 </tr>
             @endforeach
             @if(count($porPeriodoLotacao) === 0)
-                <tr><td colspan="7" class="muted">Sem períodos de lotação no intervalo seleccionado.</td></tr>
+                <tr><td colspan="8" class="muted">Sem períodos de lotação no intervalo seleccionado.</td></tr>
             @endif
         </table>
     </div>
@@ -447,6 +461,9 @@
 
             <dt>Por período de lotação</dt>
             <dd>As mesmas fórmulas de ocupação, demora média e mortalidade, recalculadas apenas com os episódios cuja saída ocorre dentro de cada período definido em "Lotação".</dd>
+
+            <dt>Doentes à espera de cama / Pico sem cama própria / Dias acima da lotação</dt>
+            <dd>Calculado dia a dia: para cada dia do período, conta-se o censo real (doentes efetivamente internados nesse dia, com o dia da alta já excluído) e compara-se com a lotação desse dia. "Doentes à espera de cama" = % de dias em que o censo excede a lotação; nesses dias, o excesso são doentes sem cama própria atribuída (maca extra, corredor, etc., segundo a organização do serviço). "Pico sem cama própria" = maior excesso observado num único dia. "Dias acima da lotação" (na tabela por período) = quantos desses dias caem em cada período de lotação.</dd>
 
             <dt>Saídas por dia da semana</dt>
             <dd>Contagem de episódios por dia da semana da data de saída.</dd>

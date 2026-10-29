@@ -76,6 +76,12 @@ class RelatorioCirurgiaController extends Controller
 
         $diasDoentePeriodo = $this->diasDoenteEntre($episodiosAbertos, $dataInicio, $dataFim);
 
+        // Censo dia a dia (quantos doentes internados em cada dia) vs. lotação
+        // desse dia — usado para identificar dias em que o serviço esteve
+        // acima da lotação (doentes "sem cama própria": em maca extra, no
+        // corredor, etc., consoante a organização do serviço).
+        $censoDiario = $this->censoDiario($episodiosAbertos, $lotacoes, $dataInicio, $dataFim);
+
         $diasCamaPeriodo = 0.0;
         foreach ($lotacoes as $lot) {
             $fim = $lot->data_fim ? Carbon::instance($lot->data_fim)->endOfDay() : $dataFim;
@@ -113,6 +119,21 @@ class RelatorioCirurgiaController extends Controller
         // -----------------------------------------------------------------
         $readmissoes = $this->calcularReadmissoes($episodios, $dataInicio, $dataFim);
 
+        // -----------------------------------------------------------------
+        // Doentes à espera de cama — dias em que o censo diário excede a
+        // lotação registada para esse dia.
+        // -----------------------------------------------------------------
+        $excessos = array_map(fn($d) => max(0, $d['censo'] - $d['lotacao']), $censoDiario);
+        $diasAcimaLotacao = count(array_filter($excessos, fn($v) => $v > 0));
+        $excessosPositivos = array_filter($excessos, fn($v) => $v > 0);
+
+        $esperaCama = [
+            'diasAcimaLotacao' => $diasAcimaLotacao,
+            'pctDiasAcimaLotacao' => count($censoDiario) ? round($diasAcimaLotacao / count($censoDiario) * 100, 1) : 0,
+            'picoDoentesSemCama' => $excessos ? max($excessos) : 0,
+            'mediaDoentesSemCamaNosDiasAcima' => $excessosPositivos ? round(array_sum($excessosPositivos) / count($excessosPositivos), 1) : 0,
+        ];
+
         $anoNumeros = [
             'episodios' => $totalEpisodios,
             'demoraMedia' => round($episodios->avg('dias_internamento') ?? 0, 1),
@@ -125,6 +146,10 @@ class RelatorioCirurgiaController extends Controller
             'readmissoes30dias' => $readmissoes['pct30'],
             'readmissoesPelaUrgencia' => $readmissoes['pctUrgencia'],
             'altasDepoisDaAltaClinica' => $totalEpisodios ? round($saiDepoisAlta / $totalEpisodios * 100, 1) : 0,
+            'diasAcimaLotacao' => $esperaCama['diasAcimaLotacao'],
+            'pctDiasAcimaLotacao' => $esperaCama['pctDiasAcimaLotacao'],
+            'picoDoentesSemCama' => $esperaCama['picoDoentesSemCama'],
+            'mediaDoentesSemCamaNosDiasAcima' => $esperaCama['mediaDoentesSemCamaNosDiasAcima'],
         ];
 
         // -----------------------------------------------------------------
@@ -158,7 +183,7 @@ class RelatorioCirurgiaController extends Controller
         // -----------------------------------------------------------------
         // Tabela por período de lotação
         // -----------------------------------------------------------------
-        $porPeriodoLotacao = $lotacoes->map(function ($lot) use ($episodios, $dataInicio, $dataFim, $episodiosAbertos) {
+        $porPeriodoLotacao = $lotacoes->map(function ($lot) use ($episodios, $dataInicio, $dataFim, $episodiosAbertos, $censoDiario) {
             $fim = $lot->data_fim ? Carbon::instance($lot->data_fim)->endOfDay() : $dataFim;
             $inicio = Carbon::instance($lot->data_inicio)->startOfDay();
             $inicioEfetivo = $inicio->greaterThan($dataInicio) ? $inicio : $dataInicio;
@@ -177,6 +202,11 @@ class RelatorioCirurgiaController extends Controller
             $obitos = $episodiosPeriodo->where('falecido', true)->count();
             $diasCama = $dias * $lot->numero_camas;
 
+            $diasAcimaLotacaoPeriodo = collect($censoDiario)
+                ->filter(fn($d) => $d['data'] >= $inicioEfetivo->toDateString() && $d['data'] <= $fimEfetivo->toDateString())
+                ->filter(fn($d) => $d['censo'] > $d['lotacao'])
+                ->count();
+
             return [
                 'periodo' => $lot->observacoes ?: ($inicio->format('d/m/Y') . ' – ' . $fim->format('d/m/Y')),
                 'lotacao' => $lot->numero_camas,
@@ -185,6 +215,7 @@ class RelatorioCirurgiaController extends Controller
                 'saidas' => $saidas,
                 'demoraMedia' => round($episodiosPeriodo->avg('dias_internamento') ?? 0, 1),
                 'mortalidade' => $saidas ? round($obitos / $saidas * 100, 1) : 0,
+                'diasAcimaLotacao' => $diasAcimaLotacaoPeriodo,
             ];
         })->filter()->values();
 
@@ -419,6 +450,52 @@ class RelatorioCirurgiaController extends Controller
     private function idadeEm(string $dataNascimento, string $dataReferencia): int
     {
         return (int) floor(Carbon::parse($dataNascimento)->diffInYears(Carbon::parse($dataReferencia)));
+    }
+
+    /**
+     * Censo diário (nº de doentes internados) vs. lotação, dia a dia, entre
+     * $dataInicio e $dataFim. Usa um "sweep" de eventos (+1 na entrada, -1
+     * na saída) em vez de contar episódio a episódio por dia — mais rápido
+     * para períodos longos. A saída é exclusiva (mesma convenção de
+     * diasDoenteEntre): o doente deixa de contar no censo no próprio dia da
+     * alta.
+     *
+     * @return array<int, array{data: string, censo: int, lotacao: int}>
+     */
+    private function censoDiario($episodiosAbertos, $lotacoes, Carbon $dataInicio, Carbon $dataFim): array
+    {
+        $totalDias = $dataInicio->diffInDays($dataFim) + 1;
+        $delta = array_fill(0, $totalDias + 1, 0);
+
+        foreach ($episodiosAbertos as $e) {
+            $entrada = Carbon::parse($e->data_entrada)->startOfDay();
+            $saida = $e->data_saida ? Carbon::parse($e->data_saida)->startOfDay() : $dataFim->copy()->addDay();
+
+            $inicioOffset = max(0, $dataInicio->diffInDays($entrada, false));
+            $fimOffset = min($totalDias, $dataInicio->diffInDays($saida, false));
+
+            if ($fimOffset > $inicioOffset) {
+                $delta[$inicioOffset]++;
+                $delta[$fimOffset]--;
+            }
+        }
+
+        $serie = [];
+        $acc = 0;
+        $dia = $dataInicio->copy();
+
+        for ($i = 0; $i < $totalDias; $i++) {
+            $acc += $delta[$i];
+
+            $lot = $lotacoes->first(
+                fn($l) => $dia->greaterThanOrEqualTo($l->data_inicio) && $dia->lessThanOrEqualTo($l->data_fim ?? $dataFim)
+            );
+
+            $serie[] = ['data' => $dia->toDateString(), 'censo' => $acc, 'lotacao' => $lot?->numero_camas ?? 0];
+            $dia->addDay();
+        }
+
+        return $serie;
     }
 
     private function faixaEtaria(int $idade): ?string
