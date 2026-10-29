@@ -93,6 +93,12 @@
         .footer { margin-top: 10px; font-size: 7.5px; color: #6B776F; }
 
         .page-break { page-break-before: always; }
+
+        .nota { font-size: 7.5px; color: #6B776F; margin-top: 3px; line-height: 1.35; }
+        .nota b { color: #17241F; }
+
+        .glossario dt { font-size: 9px; font-weight: bold; color: #17241F; margin-top: 7px; }
+        .glossario dd { font-size: 8.5px; color: #45524C; margin: 1px 0 0; line-height: 1.4; }
     </style>
 </head>
 <body>
@@ -158,6 +164,7 @@
                 </td>
             </tr>
         </table>
+        <p class="nota">Ver definição de cada indicador no glossário, no fim do documento.</p>
     </div>
 
     {{-- Doentes por mês + tabela por período de lotação --}}
@@ -404,6 +411,64 @@
                 </td>
             </tr>
         </table>
+    </div>
+
+    <div class="page-break"></div>
+
+    <div class="section">
+        <h2>Glossário — como se obtém cada indicador</h2>
+        <dl class="glossario">
+            <dt>Episódios de internamento</dt>
+            <dd>Nº de internamentos com data de saída dentro do período seleccionado.</dd>
+
+            <dt>Demora média / % até 3 dias</dt>
+            <dd>Média de dias internado por episódio; % até 3 dias = episódios com 3 dias de internamento ou menos.</dd>
+
+            <dt>Taxa de ocupação</dt>
+            <dd>Dias-doente (dias de internamento de cada episódio, com overlap ao período, incluindo episódios ainda sem alta) ÷ dias-cama disponíveis (nº de camas × dias do período, segundo os períodos configurados em Lotação).</dd>
+
+            <dt>Mortalidade</dt>
+            <dd>Óbitos (episódios marcados como "falecido") ÷ nº de episódios.</dd>
+
+            <dt>Doentes por cama</dt>
+            <dd>Nº de doentes distintos com episódios no período ÷ nº médio de camas no mesmo período.</dd>
+
+            <dt>Dia de cama vazia</dt>
+            <dd>(Dias-cama disponíveis − dias-doente) ÷ nº de saídas (episódios) — tempo médio de cama livre entre internamentos.</dd>
+
+            <dt>Readmissões a 30 dias / pela Urgência</dt>
+            <dd>% de episódios cuja data de entrada ocorre até 30 dias depois da data de saída do episódio anterior do mesmo doente. "Pela Urgência" é o subconjunto em que a origem da readmissão é Urgência.</dd>
+
+            <dt>Altas depois da alta clínica</dt>
+            <dd>% de episódios em que a data de saída real é posterior à data de alta clínica registada (ficou internado por razões não clínicas, ex. sociais).</dd>
+
+            <dt>Doentes internados por dia (média mensal) / Lotação</dt>
+            <dd>Censo médio diário = dias-doente do mês ÷ nº de dias do mês. Lotação = nº de camas registado em "Lotação" a meio de cada mês.</dd>
+
+            <dt>Por período de lotação</dt>
+            <dd>As mesmas fórmulas de ocupação, demora média e mortalidade, recalculadas apenas com os episódios cuja saída ocorre dentro de cada período definido em "Lotação".</dd>
+
+            <dt>Saídas por dia da semana</dt>
+            <dd>Contagem de episódios por dia da semana da data de saída.</dd>
+
+            <dt>Urgentes vs. Programados</dt>
+            <dd>Segmentação pela origem do episódio: "Urgência" vs. todas as restantes origens (consulta externa, cirurgia de ambulatório, outro hospital, etc.), tratadas aqui como "programados".</dd>
+
+            <dt>Idade (episódios, mortalidade, altas com atraso)</dt>
+            <dd>Idade = anos entre a data de nascimento e a data de entrada do episódio (doentes com menos de 18 anos não entram nestas faixas). Mortalidade e altas com atraso calculadas dentro de cada faixa, com as mesmas fórmulas acima.</dd>
+
+            <dt>Episódios por proveniência</dt>
+            <dd>Agrupamento pela origem registada no episódio (Urgência, Consulta externa, Exterior, Outro hospital, etc.).</dd>
+
+            <dt>Óbitos e readmissões</dt>
+            <dd>Óbitos = episódios marcados como "falecido"; idade média calculada à data de entrada. "Óbitos nos 1os 2 dias" = óbitos com 2 dias de internamento ou menos. Readmissões conforme definido acima.</dd>
+
+            <dt>Grupos de diagnóstico mais frequentes</dt>
+            <dd>Diagnóstico principal de cada episódio, agrupado por "grupo de diagnóstico" (ou pelo nome do diagnóstico quando sem grupo associado); % sobre os episódios com diagnóstico principal registado.</dd>
+
+            <dt>Urgentes vs. Programados por grupo de diagnóstico</dt>
+            <dd>Os 10 grupos de diagnóstico mais frequentes (acima), repartidos pela origem de cada episódio.</dd>
+        </dl>
     </div>
 
     <p class="footer">ULSRL | Sistema morbi 2.0 | Fonte: dados de internamento registados na aplicação. Gerado em {{ now()->format('d/m/Y H:i') }}.</p>

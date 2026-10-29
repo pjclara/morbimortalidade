@@ -247,6 +247,17 @@ function BarList({
     );
 }
 
+function Nota({ children }: { children: React.ReactNode }) {
+    return (
+        <p className="mt-3 text-xs leading-relaxed" style={{ color: MUTED }}>
+            <span className="font-medium" style={{ color: INK }}>
+                Como se obtém:
+            </span>{' '}
+            {children}
+        </p>
+    );
+}
+
 function Section({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
     return (
         <section className="rounded-[6px] border bg-white p-5" style={{ borderColor: LINE }}>
@@ -448,6 +459,15 @@ export default function RelatorioCirurgia() {
                         />
                         <KpiTile label="Altas depois da alta clínica" value={anoNumeros.altasDepoisDaAltaClinica} suffix="%" />
                     </div>
+                    <Nota>
+                        <strong>Episódios</strong>: internamentos com data de saída dentro do período. <strong>Demora média</strong>: média de
+                        dias internado por episódio (% até 3 dias = episódios com ≤3 dias). <strong>Taxa de ocupação</strong>: dias-doente ÷
+                        dias-cama disponíveis (nº de camas × dias do período, segundo a Lotação). <strong>Mortalidade</strong>: óbitos ÷
+                        episódios. <strong>Doentes por cama</strong>: doentes distintos no período ÷ nº médio de camas. <strong>Dia de cama
+                        vazia</strong>: (dias-cama − dias-doente) ÷ nº de saídas. <strong>Readmissões a 30 dias</strong>: % de episódios cuja
+                        entrada ocorre até 30 dias após a saída do episódio anterior do mesmo doente. <strong>Altas depois da alta
+                        clínica</strong>: % de episódios em que a saída real é posterior à data de alta clínica registada.
+                    </Nota>
                 </div>
 
                 {/* Evolução mensal vs lotação + tabela por período */}
@@ -466,6 +486,10 @@ export default function RelatorioCirurgia() {
                                 }}
                             />
                         </div>
+                        <Nota>
+                            censo médio diário = dias-doente do mês (dias de internamento com overlap no mês, incluindo episódios ainda
+                            sem alta) ÷ nº de dias do mês. Lotação = nº de camas registado em "Lotação" a meio de cada mês.
+                        </Nota>
                     </Section>
 
                     <Section title="Por período de lotação" subtitle="Ocupação, saídas, demora média e mortalidade por período de lotação configurado.">
@@ -518,6 +542,10 @@ export default function RelatorioCirurgia() {
                                 </tbody>
                             </table>
                         </div>
+                        <Nota>
+                            cada linha corresponde a um período definido em "Lotação"; ocupação/demora média/mortalidade recalculados só
+                            com os episódios cuja saída ocorre dentro desse período.
+                        </Nota>
                     </Section>
                 </div>
 
@@ -535,6 +563,7 @@ export default function RelatorioCirurgia() {
                                 }}
                             />
                         </div>
+                        <Nota>contagem de episódios por dia da semana da data de saída.</Nota>
                     </Section>
 
                     <Section title="Urgentes vs. Programados" subtitle="Perfil de episódios por via de entrada (Urgência vs. restante).">
@@ -562,6 +591,10 @@ export default function RelatorioCirurgia() {
                                 );
                             })}
                         </div>
+                        <Nota>
+                            segmentação pela origem do episódio: "Urgência" vs. todas as restantes origens (consulta externa, cirurgia de
+                            ambulatório, outro hospital, etc.), consideradas aqui como "programados".
+                        </Nota>
                     </Section>
                 </div>
 
@@ -601,12 +634,18 @@ export default function RelatorioCirurgia() {
                             <BarList rows={porFaixaEtaria} labelKey="faixa" valueKey="pctAltaComAtraso" accent={ROSE} suffix="%" />
                         </Section>
                     </div>
+                    <Nota>
+                        idade = anos entre a data de nascimento e a data de entrada do episódio (doentes com menos de 18 anos não entram
+                        nestas faixas). Mortalidade e altas com atraso calculadas dentro de cada faixa, com as mesmas fórmulas da secção
+                        "O período em números".
+                    </Nota>
                 </div>
 
                 {/* Proveniência + Óbitos/readmissões */}
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                     <Section title="Episódios por proveniência" subtitle="Origem do internamento, com demora média e mortalidade.">
                         <BarList rows={porProveniencia} labelKey="nome" valueKey="total" pctKey="pct" />
+                        <Nota>agrupamento pela origem registada no episódio (Urgência, Consulta externa, Exterior, Outro hospital, etc.).</Nota>
                     </Section>
 
                     <Section title="Óbitos e readmissões">
@@ -618,6 +657,11 @@ export default function RelatorioCirurgia() {
                             <KpiTile label="Readmissões a 30 dias" value={readmissoes.pct30} suffix="%" sub={`${fmt(readmissoes.total30)} episódios`} />
                             <KpiTile label="Readmissões pela Urgência" value={readmissoes.pctUrgencia} suffix="%" sub={`${fmt(readmissoes.totalUrgencia)} episódios`} />
                         </div>
+                        <Nota>
+                            óbitos = episódios marcados como "falecido". "Óbitos nos 1os 2 dias" = óbitos com ≤2 dias de internamento.
+                            Readmissões = episódios do mesmo doente cuja entrada ocorre até 30 dias depois da saída anterior ("pela
+                            Urgência" = subconjunto cuja origem da readmissão é Urgência).
+                        </Nota>
                     </Section>
                 </div>
 
@@ -625,6 +669,10 @@ export default function RelatorioCirurgia() {
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                     <Section title="Grupos de diagnóstico mais frequentes" subtitle="Diagnóstico principal — top 10.">
                         <BarList rows={gruposDiagnostico} labelKey="nome" valueKey="total" pctKey="pct" />
+                        <Nota>
+                            diagnóstico principal de cada episódio, agrupado por "grupo de diagnóstico" (ou pelo nome do diagnóstico quando
+                            sem grupo associado). % calculada sobre os episódios com diagnóstico principal registado.
+                        </Nota>
                     </Section>
 
                     <Section title="Urgentes vs. Programados por grupo de diagnóstico" subtitle="Episódios e demora média — top 10 grupos.">
@@ -665,6 +713,10 @@ export default function RelatorioCirurgia() {
                                 </tbody>
                             </table>
                         </div>
+                        <Nota>
+                            top 10 grupos de diagnóstico (acima), repartidos pela origem de cada episódio: "Urgentes" = origem Urgência,
+                            "Programados" = restantes origens.
+                        </Nota>
                     </Section>
                 </div>
 
