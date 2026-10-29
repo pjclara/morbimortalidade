@@ -55,6 +55,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/relatorio-cirurgia', [RelatorioCirurgiaController::class, 'index'])
         ->name('relatorio.cirurgia');
 
+    Route::get('/relatorio-cirurgia/pdf', [RelatorioCirurgiaController::class, 'pdf'])
+        ->name('relatorio.cirurgia.pdf');
+
 
     Route::resource('bloco_operatorio_procedimento', BlocoOperatorioProcedimentoController::class);
     Route::resource('bloco_operatorios', BlocoOperatorioController::class);

@@ -289,6 +289,14 @@ export default function RelatorioCirurgia() {
         router.get('/relatorio-cirurgia', next, { preserveState: true, preserveScroll: true });
     }
 
+    function exportarPdf() {
+        const params = new URLSearchParams({
+            data_inicio: local.data_inicio ?? '',
+            data_fim: local.data_fim ?? '',
+        });
+        window.open(`/relatorio-cirurgia/pdf?${params.toString()}`, '_blank');
+    }
+
     const descricaoLotacao = lotacoes
         .map((l) => `${l.numero_camas} camas (${l.observacoes || `${fmtData(l.data_inicio)}–${l.data_fim ? fmtData(l.data_fim) : 'atual'}`})`)
         .join(', ');
@@ -410,6 +418,13 @@ export default function RelatorioCirurgia() {
                                 onChange={(e) => apply({ ...local, data_fim: e.target.value })}
                             />
                         </div>
+                        <button
+                            onClick={exportarPdf}
+                            className="rounded-[4px] px-3 py-1.5 text-sm font-medium text-white transition hover:opacity-90"
+                            style={{ backgroundColor: CLINICAL }}
+                        >
+                            Exportar PDF
+                        </button>
                     </div>
                 </div>
 

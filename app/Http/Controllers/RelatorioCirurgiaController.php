@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Internamento;
 use App\Models\Lotacao;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Illuminate\Http\Request;
@@ -21,6 +22,21 @@ class RelatorioCirurgiaController extends Controller
     private const FAIXAS_IDADE = ['18-44', '45-64', '65-74', '75-84', '85+'];
 
     public function index(Request $request)
+    {
+        return Inertia::render('Relatorio/Cirurgia', $this->construirDados($request));
+    }
+
+    public function pdf(Request $request)
+    {
+        $dados = $this->construirDados($request);
+
+        $pdf = Pdf::loadView('relatorios.cirurgia-pdf', $dados)
+            ->setPaper('a4', 'portrait');
+
+        return $pdf->stream("movimento-assistencial-{$dados['periodo']['data_inicio']}_a_{$dados['periodo']['data_fim']}.pdf");
+    }
+
+    private function construirDados(Request $request): array
     {
         $primeiraLotacao = Lotacao::orderBy('data_inicio')->first();
         $ultimaLotacao = Lotacao::orderByDesc('data_fim')->first();
@@ -334,7 +350,7 @@ class RelatorioCirurgiaController extends Controller
             ];
         })->values();
 
-        return Inertia::render('Relatorio/Cirurgia', [
+        return [
             'periodo' => [
                 'data_inicio' => $dataInicio->toDateString(),
                 'data_fim' => $dataFim->toDateString(),
@@ -351,7 +367,7 @@ class RelatorioCirurgiaController extends Controller
             'readmissoes' => $readmissoes,
             'gruposDiagnostico' => $topGruposDiagnostico,
             'diagnosticoUrgenteProgramado' => $diagnosticoUrgenteProgramado,
-        ]);
+        ];
     }
 
     /**

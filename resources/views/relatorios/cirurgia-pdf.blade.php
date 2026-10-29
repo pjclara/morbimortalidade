@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="utf-8">
+    <title>Internamento de Cirurgia: movimento assistencial</title>
+    <style>
+        @page { margin: 22px 26px; }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: "DejaVu Sans", sans-serif;
+            color: #17241F;
+            font-size: 10px;
+        }
+
+        h1 { font-size: 15px; margin: 0 0 2px; color: #17241F; }
+        h2 {
+            font-size: 9px;
+            margin: 0 0 8px;
+            color: #6B776F;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+        }
+        h3 { font-size: 10.5px; margin: 0 0 2px; color: #17241F; }
+
+        p { margin: 0; }
+        .muted { color: #6B776F; }
+        .rose { color: #A32F26; }
+        .small { font-size: 8.5px; }
+
+        .header {
+            border-bottom: 1.5px solid #1E6F5C;
+            padding-bottom: 8px;
+            margin-bottom: 12px;
+        }
+
+        .section {
+            margin-bottom: 14px;
+        }
+
+        .kpi-table { width: 100%; border-collapse: separate; border-spacing: 4px; }
+        .kpi-table td {
+            border: 1px solid #DCE1DC;
+            border-radius: 3px;
+            padding: 6px 8px;
+            width: 25%;
+            vertical-align: top;
+        }
+        .kpi-label { font-size: 8px; color: #6B776F; }
+        .kpi-value { font-size: 15px; font-weight: bold; color: #17241F; margin-top: 2px; }
+        .kpi-value.rose { color: #A32F26; }
+        .kpi-suffix { font-size: 10px; font-weight: normal; color: #6B776F; }
+        .kpi-sub { font-size: 7.5px; color: #6B776F; margin-top: 1px; }
+
+        table.data { width: 100%; border-collapse: collapse; }
+        table.data th {
+            text-align: left;
+            font-size: 8px;
+            color: #6B776F;
+            border-bottom: 1px solid #DCE1DC;
+            padding: 3px 5px;
+            font-weight: normal;
+        }
+        table.data td {
+            font-size: 9px;
+            border-bottom: 1px solid #EDEFEC;
+            padding: 3px 5px;
+            color: #17241F;
+        }
+
+        .bar-row td { padding: 2px 5px; }
+        .bar-label { width: 38%; font-size: 8.5px; }
+        .bar-track { width: 42%; }
+        .bar-outer { background-color: #E3EFEA; border-radius: 3px; height: 7px; width: 100%; }
+        .bar-inner { background-color: #1E6F5C; border-radius: 3px; height: 7px; }
+        .bar-inner.rose { background-color: #A32F26; }
+        .bar-inner.blue { background-color: #2a78d6; }
+        .bar-value { width: 20%; text-align: right; font-size: 8.5px; white-space: nowrap; }
+
+        .cols2 { width: 100%; }
+        .cols2 td { width: 50%; vertical-align: top; padding-right: 10px; }
+
+        .pill {
+            display: inline-block;
+            background-color: #E3EFEA;
+            border-radius: 3px;
+            padding: 6px 8px;
+            width: 47%;
+            margin-right: 2%;
+        }
+
+        .footer { margin-top: 10px; font-size: 7.5px; color: #6B776F; }
+
+        .page-break { page-break-before: always; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>Internamento de Cirurgia: movimento assistencial</h1>
+        <p class="muted">Doentes saídos de {{ \Carbon\Carbon::parse($periodo['data_inicio'])->format('d/m/Y') }} a {{ \Carbon\Carbon::parse($periodo['data_fim'])->format('d/m/Y') }}</p>
+        <p class="small muted">
+            @if($lotacoes->count())
+                Lotação:
+                @foreach($lotacoes as $lot)
+                    {{ $lot->numero_camas }} camas ({{ $lot->observacoes ?: ($lot->data_inicio->format('d/m/Y') . '–' . ($lot->data_fim ? $lot->data_fim->format('d/m/Y') : 'atual')) }}){{ !$loop->last ? ',' : '' }}
+                @endforeach
+            @else
+                Sem períodos de lotação configurados.
+            @endif
+        </p>
+    </div>
+
+    {{-- O período em números --}}
+    <div class="section">
+        <h2>O período em números</h2>
+        <table class="kpi-table">
+            <tr>
+                <td>
+                    <p class="kpi-label">Episódios de internamento</p>
+                    <p class="kpi-value">{{ number_format($anoNumeros['episodios'], 0, ',', ' ') }}</p>
+                </td>
+                <td>
+                    <p class="kpi-label">Demora média</p>
+                    <p class="kpi-value">{{ $anoNumeros['demoraMedia'] }} <span class="kpi-suffix">dias</span></p>
+                    <p class="kpi-sub">{{ $anoNumeros['pctAteTresDias'] }}% das estadias até 3 dias</p>
+                </td>
+                <td>
+                    <p class="kpi-label">Taxa de ocupação</p>
+                    <p class="kpi-value">{{ $anoNumeros['taxaOcupacao'] }}<span class="kpi-suffix">%</span></p>
+                </td>
+                <td>
+                    <p class="kpi-label">Mortalidade</p>
+                    <p class="kpi-value rose">{{ $anoNumeros['mortalidade'] }}<span class="kpi-suffix">%</span></p>
+                    <p class="kpi-sub">óbitos / episódios</p>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <p class="kpi-label">Doentes por cama</p>
+                    <p class="kpi-value">{{ $anoNumeros['doentesPorCama'] }}</p>
+                    <p class="kpi-sub">{{ $anoNumeros['doentesDistintos'] }} doentes distintos no período</p>
+                </td>
+                <td>
+                    <p class="kpi-label">Dia de cama vazia</p>
+                    <p class="kpi-value">{{ $anoNumeros['diaCamaVazia'] }} <span class="kpi-suffix">dias</span></p>
+                    <p class="kpi-sub">entre doentes, por alta</p>
+                </td>
+                <td>
+                    <p class="kpi-label">Readmissões a 30 dias</p>
+                    <p class="kpi-value">{{ $anoNumeros['readmissoes30dias'] }}<span class="kpi-suffix">%</span></p>
+                    <p class="kpi-sub">{{ $anoNumeros['readmissoesPelaUrgencia'] }}% pela Urgência</p>
+                </td>
+                <td>
+                    <p class="kpi-label">Altas depois da alta clínica</p>
+                    <p class="kpi-value">{{ $anoNumeros['altasDepoisDaAltaClinica'] }}<span class="kpi-suffix">%</span></p>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    {{-- Doentes por mês + tabela por período de lotação --}}
+    <div class="section">
+        <h2>Doentes internados por dia (média mensal) e lotação</h2>
+        @php $maxMes = max(1, ...collect($porMes)->map(fn($m) => max($m['doentesMedia'], $m['lotacao'] ?? 0))->all()); @endphp
+        <table class="data">
+            <tr>
+                <th style="width: 12%;">Mês</th>
+                <th style="width: 44%;">Doentes internados (média)</th>
+                <th style="width: 44%;">Lotação</th>
+            </tr>
+            @foreach($porMes as $m)
+                <tr class="bar-row">
+                    <td>{{ $m['mes'] }}</td>
+                    <td>
+                        <table style="width:100%;"><tr>
+                            <td class="bar-track"><div class="bar-outer"><div class="bar-inner" style="width: {{ max(2, $m['doentesMedia'] / $maxMes * 100) }}%;"></div></div></td>
+                            <td class="bar-value">{{ $m['doentesMedia'] }}</td>
+                        </tr></table>
+                    </td>
+                    <td>
+                        <table style="width:100%;"><tr>
+                            <td class="bar-track"><div class="bar-outer"><div class="bar-inner blue" style="width: {{ $m['lotacao'] ? max(2, $m['lotacao'] / $maxMes * 100) : 0 }}%;"></div></div></td>
+                            <td class="bar-value">{{ $m['lotacao'] ?? '—' }}</td>
+                        </tr></table>
+                    </td>
+                </tr>
+            @endforeach
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>Por período de lotação</h2>
+        <table class="data">
+            <tr>
+                <th>Período</th>
+                <th>Camas</th>
+                <th>Doentes/dia</th>
+                <th>Ocupação</th>
+                <th>Saídas</th>
+                <th>Demora média</th>
+                <th>Mortalidade</th>
+            </tr>
+            @foreach($porPeriodoLotacao as $p)
+                <tr>
+                    <td>{{ $p['periodo'] }}</td>
+                    <td>{{ $p['lotacao'] }}</td>
+                    <td>{{ $p['doentesMedia'] }}</td>
+                    <td>{{ $p['ocupacao'] }}%</td>
+                    <td>{{ number_format($p['saidas'], 0, ',', ' ') }}</td>
+                    <td>{{ $p['demoraMedia'] }}</td>
+                    <td class="rose">{{ $p['mortalidade'] }}%</td>
+                </tr>
+            @endforeach
+            @if(count($porPeriodoLotacao) === 0)
+                <tr><td colspan="7" class="muted">Sem períodos de lotação no intervalo seleccionado.</td></tr>
+            @endif
+        </table>
+    </div>
+
+    <div class="page-break"></div>
+
+    {{-- Saídas por dia da semana + Urgentes vs Programados --}}
+    <table class="cols2">
+        <tr>
+            <td>
+                <div class="section">
+                    <h2>Saídas por dia da semana</h2>
+                    @php $maxDia = max(1, collect($saidasPorDiaSemana)->max('total')); @endphp
+                    <table class="data">
+                        @foreach($saidasPorDiaSemana as $d)
+                            <tr class="bar-row">
+                                <td class="bar-label">{{ $d['dia'] }}</td>
+                                <td>
+                                    <table style="width:100%;"><tr>
+                                        <td class="bar-track"><div class="bar-outer"><div class="bar-inner" style="width: {{ max(2, $d['total'] / $maxDia * 100) }}%;"></div></div></td>
+                                        <td class="bar-value">{{ $d['total'] }}</td>
+                                    </tr></table>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </table>
+                </div>
+            </td>
+            <td>
+                <div class="section">
+                    <h2>Urgentes vs. Programados</h2>
+                    <div class="pill">
+                        <p class="small muted" style="text-transform:uppercase;">Urgentes</p>
+                        <p class="kpi-value" style="font-size:12px;">{{ $urgentesProgramados['urgentes']['episodios'] }}
+                            <span class="kpi-suffix">({{ $urgentesProgramados['urgentes']['pct'] }}%)</span></p>
+                        <p class="small">Demora média: <b>{{ $urgentesProgramados['urgentes']['demoraMedia'] }} d</b> (mediana {{ $urgentesProgramados['urgentes']['demoraMediana'] }})</p>
+                        <p class="small rose">Mortalidade: {{ $urgentesProgramados['urgentes']['mortalidade'] }}%</p>
+                    </div>
+                    <div class="pill">
+                        <p class="small muted" style="text-transform:uppercase;">Programados</p>
+                        <p class="kpi-value" style="font-size:12px;">{{ $urgentesProgramados['programados']['episodios'] }}
+                            <span class="kpi-suffix">({{ $urgentesProgramados['programados']['pct'] }}%)</span></p>
+                        <p class="small">Demora média: <b>{{ $urgentesProgramados['programados']['demoraMedia'] }} d</b> (mediana {{ $urgentesProgramados['programados']['demoraMediana'] }})</p>
+                        <p class="small rose">Mortalidade: {{ $urgentesProgramados['programados']['mortalidade'] }}%</p>
+                    </div>
+                </div>
+            </td>
+        </tr>
+    </table>
+
+    {{-- Idade --}}
+    <div class="section">
+        <h2>Idade — episódios, mortalidade e altas com atraso por faixa etária</h2>
+        <table class="data">
+            <tr>
+                <th>Faixa etária</th>
+                <th>Episódios</th>
+                <th>Mortalidade</th>
+                <th>Altas com atraso</th>
+            </tr>
+            @foreach($porFaixaEtaria as $f)
+                <tr>
+                    <td>{{ $f['faixa'] }}</td>
+                    <td>{{ $f['episodios'] }}</td>
+                    <td class="rose">{{ $f['mortalidade'] }}%</td>
+                    <td>{{ $f['pctAltaComAtraso'] }}%</td>
+                </tr>
+            @endforeach
+        </table>
+    </div>
+
+    {{-- Proveniência + Óbitos/readmissões --}}
+    <table class="cols2">
+        <tr>
+            <td>
+                <div class="section">
+                    <h2>Episódios por proveniência</h2>
+                    <table class="data">
+                        <tr><th>Origem</th><th>Total</th><th>%</th><th>Mortal.</th></tr>
+                        @foreach($porProveniencia as $o)
+                            <tr>
+                                <td>{{ $o['nome'] }}</td>
+                                <td>{{ $o['total'] }}</td>
+                                <td>{{ $o['pct'] }}%</td>
+                                <td class="rose">{{ $o['mortalidade'] }}%</td>
+                            </tr>
+                        @endforeach
+                    </table>
+                </div>
+            </td>
+            <td>
+                <div class="section">
+                    <h2>Óbitos e readmissões</h2>
+                    <table class="kpi-table">
+                        <tr>
+                            <td>
+                                <p class="kpi-label">Óbitos</p>
+                                <p class="kpi-value rose" style="font-size:13px;">{{ $obitos['total'] }}</p>
+                                <p class="kpi-sub">{{ $obitos['pct'] }}% dos episódios</p>
+                            </td>
+                            <td>
+                                <p class="kpi-label">Idade média dos óbitos</p>
+                                <p class="kpi-value" style="font-size:13px;">{{ $obitos['idadeMedia'] }} <span class="kpi-suffix">anos</span></p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <p class="kpi-label">Readmissões a 30 dias</p>
+                                <p class="kpi-value" style="font-size:13px;">{{ $readmissoes['pct30'] }}<span class="kpi-suffix">%</span></p>
+                                <p class="kpi-sub">{{ $readmissoes['total30'] }} episódios</p>
+                            </td>
+                            <td>
+                                <p class="kpi-label">Readm. pela Urgência</p>
+                                <p class="kpi-value" style="font-size:13px;">{{ $readmissoes['pctUrgencia'] }}<span class="kpi-suffix">%</span></p>
+                                <p class="kpi-sub">{{ $readmissoes['totalUrgencia'] }} episódios</p>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </td>
+        </tr>
+    </table>
+
+    <div class="page-break"></div>
+
+    {{-- Diagnósticos --}}
+    <div class="section">
+        <h2>Grupos de diagnóstico mais frequentes (diagnóstico principal)</h2>
+        @php $maxDiag = max(1, collect($gruposDiagnostico)->max('total')); @endphp
+        <table class="data">
+            @foreach($gruposDiagnostico as $g)
+                <tr class="bar-row">
+                    <td class="bar-label">{{ $g['nome'] }}</td>
+                    <td>
+                        <table style="width:100%;"><tr>
+                            <td class="bar-track"><div class="bar-outer"><div class="bar-inner" style="width: {{ max(2, $g['total'] / $maxDiag * 100) }}%;"></div></div></td>
+                            <td class="bar-value">{{ $g['total'] }} ({{ $g['pct'] }}%)</td>
+                        </tr></table>
+                    </td>
+                </tr>
+            @endforeach
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>Urgentes vs. Programados por grupo de diagnóstico</h2>
+        <table class="data">
+            <tr>
+                <th>Grupo de diagnóstico</th>
+                <th>Episódios (demora média)</th>
+                <th>Urgentes</th>
+                <th>Programados</th>
+            </tr>
+            @foreach($diagnosticoUrgenteProgramado as $d)
+                <tr>
+                    <td>{{ $d['nome'] }}</td>
+                    <td>{{ $d['total'] }} ({{ $d['demoraMedia'] }} d)</td>
+                    <td>{{ $d['urgentes']['episodios'] }} ({{ $d['urgentes']['demoraMedia'] }} d)</td>
+                    <td>{{ $d['programados']['episodios'] }} ({{ $d['programados']['demoraMedia'] }} d)</td>
+                </tr>
+            @endforeach
+        </table>
+    </div>
+
+    {{-- Síntese --}}
+    <div class="section">
+        <h2>Síntese sobre a eficiência</h2>
+        <table class="cols2">
+            <tr>
+                <td>
+                    <p class="small" style="color:#1E6F5C; text-transform:uppercase; font-weight:bold;">Pontos a destacar</p>
+                    <ul style="margin: 4px 0 0 12px; padding: 0; font-size: 8.5px;">
+                        <li>Ocupação de {{ $anoNumeros['taxaOcupacao'] }}% com {{ $anoNumeros['doentesPorCama'] }} doentes por cama e {{ $anoNumeros['diaCamaVazia'] }} dia(s) de cama vazia entre doentes.</li>
+                        <li>Demora média de {{ $anoNumeros['demoraMedia'] }} dias; programados com {{ $urgentesProgramados['programados']['demoraMedia'] }} dias vs. {{ $urgentesProgramados['urgentes']['demoraMedia'] }} dias nos urgentes.</li>
+                        <li>Mortalidade de {{ $anoNumeros['mortalidade'] }}% ({{ $urgentesProgramados['programados']['mortalidade'] }}% nos programados).</li>
+                        <li>{{ round(100 - $anoNumeros['altasDepoisDaAltaClinica'], 1) }}% das altas saem no dia da alta clínica.</li>
+                    </ul>
+                </td>
+                <td>
+                    <p class="small" style="color:#A32F26; text-transform:uppercase; font-weight:bold;">Pontos de atenção</p>
+                    <ul style="margin: 4px 0 0 12px; padding: 0; font-size: 8.5px;">
+                        <li>Readmissões a 30 dias de {{ $anoNumeros['readmissoes30dias'] }}% ({{ $anoNumeros['readmissoesPelaUrgencia'] }}% pela Urgência).</li>
+                        <li>{{ $anoNumeros['altasDepoisDaAltaClinica'] }}% das altas saem depois da alta clínica.</li>
+                        <li>{{ $readmissoes['totalSemana'] }} readmissões ocorrem na primeira semana após a alta.</li>
+                        <li>Óbitos: idade média de {{ $obitos['idadeMedia'] }} anos, {{ $obitos['pctPrimeiros2Dias'] }}% nos primeiros 2 dias de internamento.</li>
+                    </ul>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <p class="footer">ULSRL | Sistema morbi 2.0 | Fonte: dados de internamento registados na aplicação. Gerado em {{ now()->format('d/m/Y H:i') }}.</p>
+
+</body>
+</html>

@@ -107,7 +107,7 @@ class InternamentoImportService
     private function criarInternamento(array $row, Patient $patient): Internamento
     {
         $destinoId = $this->destinos[$row['Alta']] ?? null;
-        $origemId = $this->origens[$row['COD_PROVENIENCIA']] ?? 99;
+        $origemId = $this->origens[$row['PROVENIENCIA']] ?? 99;
 
         $internamento = Internamento::create([
             'patient_id'          => $patient->id,

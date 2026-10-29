@@ -11,6 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // A base de dados de origem é por vezes refrescada/restaurada a
+        // partir de um dump que não inclui esta tabela (não gerida pelo
+        // Laravel) — tornar idempotente para poder correr sempre em segurança.
+        if (Schema::hasTable('lotacoes')) {
+            return;
+        }
+
         Schema::create('lotacoes', function (Blueprint $table) {
             $table->id();
             $table->date('data_inicio');
