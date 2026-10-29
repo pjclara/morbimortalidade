@@ -44,9 +44,14 @@ class InternamentoImportService
 
                     if ($internamentoId) {
                         // Internamento já existe: não o recriar, só atualizar
-                        // os diagnósticos com o que vier nesta linha.
+                        // os diagnósticos com o que vier nesta linha (e
+                        // preencher a data de alta clínica, se ainda faltar).
                         DB::transaction(function () use ($row, $internamentoId, &$importados) {
                             $internamento = Internamento::findOrFail($internamentoId);
+
+                            if (!$internamento->data_alta && !empty($row['DTA_ALTA_CLINICA'])) {
+                                $internamento->update(['data_alta' => $row['DTA_ALTA_CLINICA']]);
+                            }
 
                             $this->addDiagnosticos($row, $internamento);
 
@@ -114,7 +119,7 @@ class InternamentoImportService
             'episodio'            => $row['INT_EPISODIO'],
             'data_entrada'        => $row['DTA_INTERNAMENTO'],
             'data_saida'          => $row['Dta_Alta'],
-            'data_alta'           => null,
+            'data_alta'           => $row['DTA_ALTA_CLINICA'] ?? null,
             'dias_internamento'   => $row['DIAS INT'],
             'destino_id'          => $destinoId,
             'origem_id'           => $origemId,
