@@ -375,19 +375,27 @@ class RelatorioCirurgiaController extends Controller
      * contando os episódios fornecidos (já pré-filtrados a abranger o
      * período pedido). Episódios ainda sem data_saida são censurados em
      * $fim.
+     *
+     * O dia da alta NÃO conta como dia ocupado — a cama fica disponível
+     * nesse mesmo dia para outro doente. Esta é também a convenção da fonte
+     * (SONHO/SClínico): `dias_internamento` = data_saida − data_entrada,
+     * sem +1 (confirmado por amostragem). Por isso o overlap usa um
+     * intervalo semiaberto [entrada, saída).
      */
     private function diasDoenteEntre($episodios, Carbon $inicio, Carbon $fim): float
     {
         $total = 0;
+        $fimExclusivo = $fim->copy()->startOfDay()->addDay();
+
         foreach ($episodios as $e) {
             $entrada = Carbon::parse($e->data_entrada)->startOfDay();
-            $saida = $e->data_saida ? Carbon::parse($e->data_saida)->startOfDay() : $fim->copy()->startOfDay();
+            $saida = $e->data_saida ? Carbon::parse($e->data_saida)->startOfDay() : $fimExclusivo;
 
             $overlapInicio = $entrada->greaterThan($inicio) ? $entrada : $inicio->copy()->startOfDay();
-            $overlapFim = $saida->lessThan($fim) ? $saida : $fim->copy()->startOfDay();
+            $overlapFimExclusivo = $saida->lessThan($fimExclusivo) ? $saida : $fimExclusivo;
 
-            if ($overlapFim->greaterThanOrEqualTo($overlapInicio)) {
-                $total += $overlapInicio->diffInDays($overlapFim) + 1;
+            if ($overlapFimExclusivo->greaterThan($overlapInicio)) {
+                $total += $overlapInicio->diffInDays($overlapFimExclusivo);
             }
         }
 
