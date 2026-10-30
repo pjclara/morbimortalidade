@@ -381,6 +381,8 @@ class RelatorioCirurgiaController extends Controller
             ];
         })->values();
 
+        $recomendacoes = $this->gerarRecomendacoes($anoNumeros, $urgentesProgramados, $readmissoes, $obitos, $porFaixaEtaria);
+
         return [
             'periodo' => [
                 'data_inicio' => $dataInicio->toDateString(),
@@ -398,7 +400,99 @@ class RelatorioCirurgiaController extends Controller
             'readmissoes' => $readmissoes,
             'gruposDiagnostico' => $topGruposDiagnostico,
             'diagnosticoUrgenteProgramado' => $diagnosticoUrgenteProgramado,
+            'recomendacoes' => $recomendacoes,
         ];
+    }
+
+    /**
+     * Sugestões de ação geradas por regras simples sobre os indicadores já
+     * calculados — leitura automática, não clínica. Cada limiar está
+     * documentado no texto da própria recomendação (nível: alerta > aviso >
+     * info).
+     *
+     * @return array<int, array{nivel: string, titulo: string, texto: string}>
+     */
+    private function gerarRecomendacoes(array $anoNumeros, array $urgentesProgramados, array $readmissoes, array $obitos, $porFaixaEtaria): array
+    {
+        $recomendacoes = [];
+
+        if ($anoNumeros['pctDiasAcimaLotacao'] >= 20) {
+            $recomendacoes[] = [
+                'nivel' => 'alerta',
+                'titulo' => 'Lotação insuficiente para o censo real',
+                'texto' => "O serviço esteve acima da lotação configurada em {$anoNumeros['pctDiasAcimaLotacao']}% dos dias ({$anoNumeros['diasAcimaLotacao']} dias), com um pico de {$anoNumeros['picoDoentesSemCama']} doentes sem cama própria. Vale a pena rever se o nº de camas em \"Lotação\" corresponde à capacidade real, ou planear camas extra/circuitos alternativos para os picos.",
+            ];
+        } elseif ($anoNumeros['taxaOcupacao'] >= 95) {
+            $recomendacoes[] = [
+                'nivel' => 'aviso',
+                'titulo' => 'Ocupação no limite',
+                'texto' => "Taxa de ocupação de {$anoNumeros['taxaOcupacao']}%, muito perto do limite da lotação — pouca margem para picos de admissões sem recorrer a camas extra.",
+            ];
+        }
+
+        if ($anoNumeros['diaCamaVazia'] <= 0.5) {
+            $recomendacoes[] = [
+                'nivel' => 'aviso',
+                'titulo' => 'Rotatividade de camas muito apertada',
+                'texto' => "Em média, uma cama fica livre apenas {$anoNumeros['diaCamaVazia']} dia(s) entre doentes. Qualquer atraso na alta (limpeza, transporte, burocracia) tem impacto direto na admissão seguinte.",
+            ];
+        }
+
+        if ($anoNumeros['readmissoes30dias'] >= 10) {
+            $recomendacoes[] = [
+                'nivel' => 'alerta',
+                'titulo' => 'Readmissões a 30 dias elevadas',
+                'texto' => "{$anoNumeros['readmissoes30dias']}% dos episódios são readmissões até 30 dias após uma alta anterior ({$anoNumeros['readmissoesPelaUrgencia']}% delas pela Urgência). Vale a pena rever critérios de alta e o seguimento pós-alta (consulta de follow-up, contacto telefónico) nos grupos de diagnóstico com mais peso.",
+            ];
+        }
+
+        if ($anoNumeros['altasDepoisDaAltaClinica'] >= 2) {
+            $recomendacoes[] = [
+                'nivel' => 'aviso',
+                'titulo' => 'Doentes ficam internados além da alta clínica',
+                'texto' => "{$anoNumeros['altasDepoisDaAltaClinica']}% dos episódios têm saída real posterior à data de alta clínica registada — tipicamente motivos não clínicos (logística, apoio social, transporte). Reduzir este atraso liberta camas mais cedo sem qualquer intervenção clínica adicional.",
+            ];
+        }
+
+        $mortalidadeUrgentes = $urgentesProgramados['urgentes']['mortalidade'];
+        $mortalidadeProgramados = $urgentesProgramados['programados']['mortalidade'];
+        if ($mortalidadeProgramados > 0 && $mortalidadeUrgentes >= $mortalidadeProgramados * 2) {
+            $recomendacoes[] = [
+                'nivel' => 'info',
+                'titulo' => 'Mortalidade muito mais alta nos urgentes',
+                'texto' => "Mortalidade de {$mortalidadeUrgentes}% nos episódios urgentes vs. {$mortalidadeProgramados}% nos programados. Esperado dado o perfil de gravidade, mas vale a pena confirmar se a referenciação/triagem inicial identifica precocemente os casos de maior risco.",
+            ];
+        }
+
+        if ($obitos['pctPrimeiros2Dias'] >= 30) {
+            $recomendacoes[] = [
+                'nivel' => 'info',
+                'titulo' => 'Muitos óbitos nos primeiros 2 dias',
+                'texto' => "{$obitos['pctPrimeiros2Dias']}% dos óbitos ocorrem nos primeiros 2 dias de internamento — sugere doentes admitidos já em estado crítico, mais do que complicações desenvolvidas durante o internamento.",
+            ];
+        }
+
+        $faixaMaisVelha = collect($porFaixaEtaria)->last();
+        if ($faixaMaisVelha && $faixaMaisVelha['mortalidade'] >= 10) {
+            $recomendacoes[] = [
+                'nivel' => 'info',
+                'titulo' => 'Mortalidade concentrada nos doentes mais idosos',
+                'texto' => "A faixa etária {$faixaMaisVelha['faixa']} tem mortalidade de {$faixaMaisVelha['mortalidade']}%, claramente acima das restantes faixas — pode justificar um circuito ou protocolo específico para doentes idosos frágeis.",
+            ];
+        }
+
+        if (empty($recomendacoes)) {
+            $recomendacoes[] = [
+                'nivel' => 'info',
+                'titulo' => 'Sem desvios relevantes identificados',
+                'texto' => 'Os indicadores calculados para este período não ultrapassam os limiares definidos para alerta ou aviso.',
+            ];
+        }
+
+        $ordem = ['alerta' => 0, 'aviso' => 1, 'info' => 2];
+        usort($recomendacoes, fn($a, $b) => $ordem[$a['nivel']] <=> $ordem[$b['nivel']]);
+
+        return $recomendacoes;
     }
 
     /**

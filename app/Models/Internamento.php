@@ -6,7 +6,28 @@ use Illuminate\Database\Eloquent\Model;
 
 class Internamento extends Model
 {
-    protected $fillable = ['bloquear', 'clavien_dindo_id', 'data_alta', 'data_entrada', 'data_saida', 'destino_id', 'dias_internamento', 'episodio', 'equipa_id', 'falecido', 'falecido_apos_alta', 'mortalidade_esperada', 'observacoes', 'origem_id', 'patient_id', 'responsavel_id'];
+    /**
+     * Causas selecionáveis para um reinternamento identificado como
+     * readmissão (<30 dias após uma alta anterior do mesmo doente). Guardadas
+     * em `causas_readmissao` como array json — um internamento pode ter mais
+     * do que uma causa associada.
+     */
+    public const CAUSAS_READMISSAO_OPTIONS = [
+        'complicacao_cirurgica',
+        'infecao_ferida_operatoria',
+        'complicacao_medica',
+        'recidiva_agravamento',
+        'efeito_adverso_medicacao',
+        'problema_gestao_alta',
+        'nao_relacionado',
+        'outra',
+    ];
+
+    protected $fillable = ['bloquear', 'causas_readmissao', 'clavien_dindo_id', 'data_alta', 'data_entrada', 'data_saida', 'destino_id', 'dias_internamento', 'episodio', 'equipa_id', 'falecido', 'falecido_apos_alta', 'mortalidade_esperada', 'observacoes', 'origem_id', 'patient_id', 'responsavel_id'];
+
+    protected $casts = [
+        'causas_readmissao' => 'array',
+    ];
 
     //
 

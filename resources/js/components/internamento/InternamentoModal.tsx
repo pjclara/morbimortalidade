@@ -32,6 +32,7 @@ const FIELD_TAB_MAP: Record<string, string> = {
     dias_internamento: 'internamento',
     falecido: 'internamento',
     mortalidade_esperada: 'internamento',
+    causas_readmissao: 'internamento',
     'patient.processo': 'paciente',
     'patient.data_nascimento': 'paciente',
     'patient.sexo_id': 'paciente',
@@ -60,6 +61,19 @@ const MOMENTO_OPTIONS: { value: string; label: string; badgeClass: string }[] = 
     { value: 'mais_90_dias', label: '> 90 dias após a alta', badgeClass: 'bg-rose-100 text-rose-700' },
 ];
 
+// Causas selecionáveis para uma readmissão (<30 dias após alta anterior do
+// mesmo doente) — ver Internamento::CAUSAS_READMISSAO_OPTIONS, no backend.
+const CAUSAS_READMISSAO_OPTIONS: { value: string; label: string }[] = [
+    { value: 'complicacao_cirurgica', label: 'Complicação cirúrgica' },
+    { value: 'infecao_ferida_operatoria', label: 'Infeção da ferida operatória' },
+    { value: 'complicacao_medica', label: 'Complicação médica não cirúrgica' },
+    { value: 'recidiva_agravamento', label: 'Recidiva / agravamento da doença de base' },
+    { value: 'efeito_adverso_medicacao', label: 'Efeito adverso de medicação' },
+    { value: 'problema_gestao_alta', label: 'Problema na gestão da alta (suporte social/domiciliário)' },
+    { value: 'nao_relacionado', label: 'Causa não relacionada com o internamento índice' },
+    { value: 'outra', label: 'Outra' },
+];
+
 // Mesma paleta usada em Internamento/Index.tsx — verde-cirúrgico como único
 // acento, papel frio, âmbar/vermelho reservados a avisos e desfechos críticos.
 const INK = '#17241F';
@@ -68,6 +82,8 @@ const LINE = '#DCE1DC';
 const CLINICAL = '#1E6F5C';
 const CLINICAL_SOFT = '#E3EFEA';
 const ROSE = '#A32F26';
+const AMBER = '#9A6B12';
+const AMBER_SOFT = '#FBF0DC';
 const MONO_FONT = "'IBM Plex Mono', ui-monospace, monospace";
 const SANS_FONT = "'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif";
 // Campos cujo valor é uma data/contagem — alinhados em mono, como na listagem.
@@ -159,7 +175,7 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
 
     if (!open) return null;
 
-    const editableFields = ['observacoes', 'mortalidade_esperada', 'bloquear', 'data_alta', 'principal', 'falecido_apos_alta'];
+    const editableFields = ['observacoes', 'mortalidade_esperada', 'bloquear', 'data_alta', 'principal', 'falecido_apos_alta', 'causas_readmissao'];
     const booleanFields = ['mortalidade_esperada', 'falecido', 'bloquear', 'principal', 'falecido_apos_alta'];
     const dataFields = ['data_alta'];
     const textFields = ['observacoes'];
@@ -599,6 +615,60 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
                                     item.falecido_apos_alta,
                                     'Distingue de quem faleceu ainda no serviço (destino Falecido, antes da alta).',
                                 )}
+                                {item.readmissao_30_dias && (() => {
+                                    const selecionadas: string[] = form.causas_readmissao ?? item.causas_readmissao ?? [];
+                                    const fieldErrors = backendErrors?.causas_readmissao;
+
+                                    return (
+                                        <div className="flex border-b py-2.5" style={{ borderColor: LINE }}>
+                                            <span className="w-44 shrink-0 text-sm font-medium" style={{ color: '#45524C' }}>
+                                                Causa da readmissão
+                                            </span>
+
+                                            {!editMode ? (
+                                                <div className="ml-4 flex flex-wrap gap-2">
+                                                    {selecionadas.length > 0 ? (
+                                                        selecionadas.map((valor) => (
+                                                            <span
+                                                                key={valor}
+                                                                className="rounded-full px-2 py-0.5 text-xs font-medium"
+                                                                style={{ backgroundColor: AMBER_SOFT, color: AMBER }}
+                                                            >
+                                                                {CAUSAS_READMISSAO_OPTIONS.find((o) => o.value === valor)?.label ?? valor}
+                                                            </span>
+                                                        ))
+                                                    ) : (
+                                                        <span className="text-sm" style={{ color: INK }}>
+                                                            -
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <div className="ml-4">
+                                                    <div className="flex flex-col gap-1.5">
+                                                        {CAUSAS_READMISSAO_OPTIONS.map((opt) => (
+                                                            <label key={opt.value} className="flex items-center gap-2 text-sm" style={{ color: INK }}>
+                                                                <input
+                                                                    type="checkbox"
+                                                                    className="h-4 w-4 accent-[#1E6F5C]"
+                                                                    checked={selecionadas.includes(opt.value)}
+                                                                    onChange={(e) => {
+                                                                        const next = e.target.checked
+                                                                            ? [...selecionadas, opt.value]
+                                                                            : selecionadas.filter((v) => v !== opt.value);
+                                                                        handleChange('causas_readmissao', next);
+                                                                    }}
+                                                                />
+                                                                {opt.label}
+                                                            </label>
+                                                        ))}
+                                                    </div>
+                                                    {fieldErrors && <span className="mt-1 block text-sm text-red-600">{fieldErrors}</span>}
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })()}
                             </>
                         )}
 

@@ -99,6 +99,21 @@
 
         .glossario dt { font-size: 9px; font-weight: bold; color: #17241F; margin-top: 7px; }
         .glossario dd { font-size: 8.5px; color: #45524C; margin: 1px 0 0; line-height: 1.4; }
+
+        .recomendacao {
+            border-left: 3px solid #DCE1DC;
+            padding: 5px 0 5px 8px;
+            margin-bottom: 6px;
+        }
+        .recomendacao.alerta { border-left-color: #A32F26; }
+        .recomendacao.aviso { border-left-color: #C97A1E; }
+        .recomendacao.info { border-left-color: #1E6F5C; }
+        .recomendacao-titulo { font-size: 9px; font-weight: bold; color: #17241F; }
+        .recomendacao-nivel { font-size: 7px; text-transform: uppercase; margin-left: 4px; }
+        .recomendacao-nivel.alerta { color: #A32F26; }
+        .recomendacao-nivel.aviso { color: #C97A1E; }
+        .recomendacao-nivel.info { color: #1E6F5C; }
+        .recomendacao-texto { font-size: 8.5px; color: #45524C; margin-top: 2px; line-height: 1.4; }
     </style>
 </head>
 <body>
@@ -425,6 +440,21 @@
                 </td>
             </tr>
         </table>
+    </div>
+
+    {{-- Recomendações --}}
+    <div class="section">
+        <h2>Recomendações — leitura automática dos indicadores</h2>
+        @foreach($recomendacoes as $r)
+            <div class="recomendacao {{ $r['nivel'] }}">
+                <p>
+                    <span class="recomendacao-titulo">{{ $r['titulo'] }}</span>
+                    <span class="recomendacao-nivel {{ $r['nivel'] }}">{{ strtoupper($r['nivel']) }}</span>
+                </p>
+                <p class="recomendacao-texto">{{ $r['texto'] }}</p>
+            </div>
+        @endforeach
+        <p class="nota">Geradas por regras simples sobre os indicadores acima — não substituem avaliação clínica ou de gestão.</p>
     </div>
 
     <div class="page-break"></div>

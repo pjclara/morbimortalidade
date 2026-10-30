@@ -142,6 +142,12 @@ interface DiagnosticoUrgenteProgramadoLinha {
     programados: { episodios: number; demoraMedia: number };
 }
 
+interface Recomendacao {
+    nivel: 'alerta' | 'aviso' | 'info';
+    titulo: string;
+    texto: string;
+}
+
 interface PageProps {
     periodo: Periodo;
     lotacoes: Lotacao[];
@@ -156,6 +162,7 @@ interface PageProps {
     readmissoes: Readmissoes;
     gruposDiagnostico: GrupoDiagnosticoLinha[];
     diagnosticoUrgenteProgramado: DiagnosticoUrgenteProgramadoLinha[];
+    recomendacoes: Recomendacao[];
 }
 
 function fmt(n: number) {
@@ -263,6 +270,35 @@ function Nota({ children }: { children: React.ReactNode }) {
     );
 }
 
+const NIVEL_COR: Record<Recomendacao['nivel'], string> = {
+    alerta: ROSE,
+    aviso: '#C97A1E',
+    info: CLINICAL,
+};
+
+const NIVEL_LABEL: Record<Recomendacao['nivel'], string> = {
+    alerta: 'Alerta',
+    aviso: 'Aviso',
+    info: 'Info',
+};
+
+function RecomendacaoCard({ recomendacao }: { recomendacao: Recomendacao }) {
+    const cor = NIVEL_COR[recomendacao.nivel];
+    return (
+        <div className="rounded-[4px] border-l-[3px] bg-white py-2 pl-3" style={{ borderColor: cor }}>
+            <p className="text-sm font-semibold" style={{ color: INK }}>
+                {recomendacao.titulo}
+                <span className="ml-2 text-[10px] font-semibold tracking-wide uppercase" style={{ color: cor }}>
+                    {NIVEL_LABEL[recomendacao.nivel]}
+                </span>
+            </p>
+            <p className="mt-1 text-sm" style={{ color: MUTED }}>
+                {recomendacao.texto}
+            </p>
+        </div>
+    );
+}
+
 function Section({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
     return (
         <section className="rounded-[6px] border bg-white p-5" style={{ borderColor: LINE }}>
@@ -296,6 +332,7 @@ export default function RelatorioCirurgia() {
         readmissoes,
         gruposDiagnostico = [],
         diagnosticoUrgenteProgramado = [],
+        recomendacoes = [],
     } = usePage<PageProps>().props;
 
     const [local, setLocal] = useState<Periodo>(periodo);
@@ -745,6 +782,15 @@ export default function RelatorioCirurgia() {
                         </Nota>
                     </Section>
                 </div>
+
+                {/* Recomendações */}
+                <Section title="Recomendações" subtitle="Leitura automática dos indicadores — não substitui avaliação clínica ou de gestão.">
+                    <div className="flex flex-col gap-2.5">
+                        {recomendacoes.map((r, i) => (
+                            <RecomendacaoCard key={i} recomendacao={r} />
+                        ))}
+                    </div>
+                </Section>
 
                 {/* Síntese */}
                 <Section title="Síntese sobre a eficiência" subtitle="Leitura automática dos indicadores acima — sem juízo clínico.">

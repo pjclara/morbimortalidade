@@ -34,7 +34,16 @@ class InternamentoController extends Controller
             'responsavel',
             'complicacaoInternamentos'
         ])
-            ->withCount('blocoOperatorios');
+            ->withCount('blocoOperatorios')
+            ->addSelect([
+                'readmissao_30_dias' => DB::table('internamentos as i2')
+                    ->selectRaw('COUNT(*) > 0')
+                    ->whereColumn('i2.patient_id', 'internamentos.patient_id')
+                    ->whereColumn('i2.id', '!=', 'internamentos.id')
+                    ->whereNotNull('i2.data_saida')
+                    ->whereColumn('i2.data_saida', '<=', 'internamentos.data_entrada')
+                    ->whereRaw('DATEDIFF(internamentos.data_entrada, i2.data_saida) < 30'),
+            ]);
 
         /* -------------------------
         FILTRO: SE FOR INTERNO DO GERAL SÓ VE OS SEUS PACIENTES
@@ -145,6 +154,17 @@ class InternamentoController extends Controller
             }
         }
 
+        /* -------------------------
+        FILTRO: READMISSÃO < 30 DIAS APÓS ALTA ANTERIOR
+        --------------------------*/
+        if ($request->filled('readmissao_30_dias')) {
+            if ($request->readmissao_30_dias === '1') {
+                $query->havingRaw('readmissao_30_dias = 1');
+            } elseif ($request->readmissao_30_dias === '0') {
+                $query->havingRaw('readmissao_30_dias = 0');
+            }
+        }
+
 
 
         /* -------------------------
@@ -171,6 +191,7 @@ class InternamentoController extends Controller
             'falecido_apos_alta',
             'bloco_operatorio',
             'com_complicacoes',
+            'readmissao_30_dias',
         ]);
 
         // filtros dinâmicos (ex: datas, tipo_filtro, bloco, etc.)
@@ -182,6 +203,7 @@ class InternamentoController extends Controller
         return Inertia::render('Internamento/Index', [
             'items' => $internamentos->through(fn($i) => [
                 ...$i->toArray(),
+                'readmissao_30_dias' => (bool) $i->readmissao_30_dias,
                 'destino_options' => $destinoOptions,
                 'origem_options' => $origemOptions,
                 'responsavel_options' => $responsavelOptions,
@@ -294,6 +316,8 @@ class InternamentoController extends Controller
             'clavien_dindo_id' => 'nullable|exists:clavien_dindos,id',
             'falecido' => 'nullable|boolean',
             'falecido_apos_alta' => 'nullable|boolean',
+            'causas_readmissao' => 'nullable|array',
+            'causas_readmissao.*' => [Rule::in(Internamento::CAUSAS_READMISSAO_OPTIONS)],
             'mortalidade_esperada' => 'nullable|boolean',
             'observacoes' => 'nullable|string|max:1000',
             'complicacao_internamentos' => 'nullable|array',

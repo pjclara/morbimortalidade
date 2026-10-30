@@ -39,6 +39,7 @@ interface Props {
         falecido_apos_alta?: boolean;
         bloco_operatorio?: '0' | '1';
         com_complicacoes?: '0' | '1';
+        readmissao_30_dias?: '0' | '1';
     };
     responsavel_options: Record<string, number>;
     clavien_options?: Record<string, number>;
@@ -54,6 +55,8 @@ const CLINICAL = '#1E6F5C';
 const CLINICAL_SOFT = '#E3EFEA';
 const ROSE = '#A32F26';
 const ROSE_SOFT = '#FBE7E4';
+const AMBER = '#9A6B12';
+const AMBER_SOFT = '#FBF0DC';
 
 const fieldLabel = 'text-xs font-medium tracking-normal text-[#45524C]';
 const fieldInput =
@@ -365,6 +368,19 @@ export default function Index({ items, filters, responsavel_options, clavien_opt
                             </select>
                         </div>
 
+                        <div className="flex flex-col gap-1">
+                            <span className={fieldLabel}>Readmissão &lt;30 dias</span>
+                            <select
+                                className={fieldInput}
+                                defaultValue={currentFilters.readmissao_30_dias ?? ''}
+                                onChange={(e) => handleFilterChange('readmissao_30_dias', e.target.value)}
+                            >
+                                <option value="">Todos</option>
+                                <option value="1">Readmitidos &lt;30 dias</option>
+                                <option value="0">Sem readmissão &lt;30 dias</option>
+                            </select>
+                        </div>
+
                         <button
                             onClick={clearFilters}
                             className="px-1 py-1.5 text-sm font-medium underline decoration-[#C9D1CB] underline-offset-4 hover:text-[#17241F]"
@@ -413,7 +429,13 @@ export default function Index({ items, filters, responsavel_options, clavien_opt
                             </thead>
                             <tbody>
                                 {items.data.map((i: any) => {
-                                    const statusColor = i.falecido_apos_alta ? ROSE : i.bloco_operatorios_count > 0 ? CLINICAL : LINE;
+                                    const statusColor = i.falecido_apos_alta
+                                        ? ROSE
+                                        : i.readmissao_30_dias
+                                          ? AMBER
+                                          : i.bloco_operatorios_count > 0
+                                            ? CLINICAL
+                                            : LINE;
 
                                     return (
                                         <tr
@@ -453,6 +475,15 @@ export default function Index({ items, filters, responsavel_options, clavien_opt
                                                         style={{ backgroundColor: ROSE_SOFT, color: ROSE }}
                                                     >
                                                         Faleceu após a alta
+                                                    </span>
+                                                ) : null}
+                                                {i.readmissao_30_dias ? (
+                                                    <span
+                                                        className="ml-2 rounded-full px-2 py-0.5 text-xs font-medium"
+                                                        style={{ backgroundColor: AMBER_SOFT, color: AMBER }}
+                                                        title="Doente reinternado menos de 30 dias após uma alta anterior"
+                                                    >
+                                                        Readmissão &lt;30 dias
                                                     </span>
                                                 ) : null}
                                             </td>
