@@ -99,6 +99,14 @@ class UpdateInternamentoRequest extends FormRequest
 
             'data_admissao_urgencia' => 'nullable|date',
             'episodio_urgencia' => 'nullable|integer',
+
+            'data_prevista_alta' => [
+                'nullable',
+                'date',
+                $internamento?->data_entrada ? Rule::date()->afterOrEqual($internamento->data_entrada) : 'date',
+            ],
+            'hora_alta' => 'nullable|date_format:H:i',
+            'motivo_nao_antecipacao_alta_id' => 'nullable|exists:motivos_nao_antecipacao_alta,id',
         ];
     }
 

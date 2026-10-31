@@ -28,7 +28,7 @@ class Internamento extends Model
         'outra',
     ];
 
-    protected $fillable = ['bloquear', 'causas_readmissao', 'clavien_dindo_id', 'consulta_pos_alta_marcada', 'contacto_telefonico_pos_alta', 'data_admissao_urgencia', 'data_alta', 'data_consulta_pos_alta', 'data_contacto_pos_alta', 'data_entrada', 'data_saida', 'destino_detalhe_id', 'destino_id', 'dias_internamento', 'episodio', 'episodio_urgencia', 'equipa_id', 'falecido', 'falecido_apos_alta', 'mortalidade_esperada', 'observacoes', 'origem_id', 'patient_id', 'readmissao_planeada', 'readmissao_relacionada', 'responsavel_id', 'servico_destino'];
+    protected $fillable = ['bloquear', 'causas_readmissao', 'clavien_dindo_id', 'consulta_pos_alta_marcada', 'contacto_telefonico_pos_alta', 'data_admissao_urgencia', 'data_alta', 'data_consulta_pos_alta', 'data_contacto_pos_alta', 'data_entrada', 'data_prevista_alta', 'data_saida', 'destino_detalhe_id', 'destino_id', 'dias_internamento', 'episodio', 'episodio_urgencia', 'equipa_id', 'falecido', 'falecido_apos_alta', 'hora_alta', 'mortalidade_esperada', 'motivo_nao_antecipacao_alta_id', 'observacoes', 'origem_id', 'patient_id', 'readmissao_planeada', 'readmissao_relacionada', 'responsavel_id', 'servico_destino'];
 
     protected $casts = [
         'causas_readmissao' => 'array',
@@ -49,6 +49,11 @@ class Internamento extends Model
     public function destinoDetalhe()
     {
         return $this->belongsTo(DestinoDetalhe::class, 'destino_detalhe_id', 'id');
+    }
+
+    public function motivoNaoAntecipacaoAlta()
+    {
+        return $this->belongsTo(MotivoNaoAntecipacaoAlta::class, 'motivo_nao_antecipacao_alta_id', 'id');
     }
 
     public function equipa()
