@@ -91,6 +91,56 @@ class AnaliticaController extends Controller
             ->whereColumn('data_alta', '<', 'data_saida')
             ->count();
 
+        // ---------------------------------------------------------------
+        // Estimativa: % de doentes cuja alta previsível cairia ao fim de
+        // semana, assumindo que ficam internados a média de dias do seu
+        // "perfil" (mesmo diagnóstico principal, operado/não operado e
+        // admissão urgente/programada — ver InternamentoController::index,
+        // mesmo critério), mas cuja alta real só aconteceu já na segunda-feira
+        // seguinte — o sinal de que a alta ficou "represada" pelo fim de
+        // semana em vez de ter ocorrido no dia clinicamente esperado.
+        // ---------------------------------------------------------------
+        $internamentosParaFds = (clone $internamentoQuery)
+            ->addSelect([
+                'media_dias_perfil' => DB::table('diagnostico_internamento as di2')
+                    ->join('internamentos as i2', 'i2.id', '=', 'di2.internamento_id')
+                    ->selectRaw('AVG(i2.dias_internamento)')
+                    ->where('di2.principal', true)
+                    ->whereRaw(
+                        'di2.diagnostico_id = (select di1.diagnostico_id from diagnostico_internamento di1 '
+                        . 'where di1.internamento_id = internamentos.id and di1.principal = 1 limit 1)'
+                    )
+                    ->whereRaw(
+                        '(exists (select 1 from bloco_operatorios bo2 where bo2.internamento_id = i2.id)) '
+                        . '= (exists (select 1 from bloco_operatorios bo1 where bo1.internamento_id = internamentos.id))'
+                    )
+                    ->whereRaw(
+                        "(coalesce((select o2.nome from origems o2 where o2.id = i2.origem_id), '') = 'Urgência') "
+                        . "= (coalesce((select o1.nome from origems o1 where o1.id = internamentos.origem_id), '') = 'Urgência')"
+                    ),
+            ])
+            ->whereNotNull('data_entrada')
+            ->get(['id', 'data_entrada', 'data_saida']);
+
+        $totalComPerfil = 0;
+        $altaEstimadaFds = 0;
+
+        foreach ($internamentosParaFds as $i) {
+            if ($i->media_dias_perfil === null) {
+                continue;
+            }
+
+            $totalComPerfil++;
+            $altaEstimada = Carbon::parse($i->data_entrada)->addDays((int) round($i->media_dias_perfil));
+
+            $cairiaAoFds = in_array($altaEstimada->dayOfWeek, [Carbon::SATURDAY, Carbon::SUNDAY], true);
+            $saiuNaSegunda = $i->data_saida && Carbon::parse($i->data_saida)->dayOfWeek === Carbon::MONDAY;
+
+            if ($cairiaAoFds && $saiuNaSegunda) {
+                $altaEstimadaFds++;
+            }
+        }
+
         $kpis = [
             'totalInternamentos' => $totalInternamentos,
             'totalCirurgias' => $totalCirurgias,
@@ -101,6 +151,8 @@ class AnaliticaController extends Controller
             'taxaComplicacoes' => $totalInternamentos ? round($comComplicacoes / $totalInternamentos * 100, 1) : 0,
             'casosSociais' => $casosSociais,
             'taxaCasosSociais' => $totalInternamentos ? round($casosSociais / $totalInternamentos * 100, 1) : 0,
+            'altaEstimadaFds' => $altaEstimadaFds,
+            'taxaAltaEstimadaFds' => $totalComPerfil ? round($altaEstimadaFds / $totalComPerfil * 100, 1) : 0,
         ];
 
         // ---------------------------------------------------------------

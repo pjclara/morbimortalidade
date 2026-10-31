@@ -32,6 +32,7 @@ const CLINICAL_SOFT = '#E3EFEA';
 const SERIES_BLUE = '#2a78d6';
 const SERIES_ORANGE = '#eb6834';
 const ROSE = '#A32F26';
+const AMBER = '#9A6B12';
 
 const fieldLabel = 'text-xs font-medium tracking-normal text-[#45524C]';
 const fieldInput =
@@ -47,6 +48,8 @@ interface Kpis {
     taxaComplicacoes: number;
     casosSociais: number;
     taxaCasosSociais: number;
+    altaEstimadaFds: number;
+    taxaAltaEstimadaFds: number;
 }
 
 interface MesInternamento {
@@ -140,13 +143,25 @@ function fmt(n: number) {
     return n.toLocaleString('pt-PT');
 }
 
-function KpiTile({ label, value, suffix, tone }: { label: string; value: number | string; suffix?: string; tone?: 'default' | 'rose' }) {
+function KpiTile({
+    label,
+    value,
+    suffix,
+    tone,
+    title,
+}: {
+    label: string;
+    value: number | string;
+    suffix?: string;
+    tone?: 'default' | 'rose' | 'amber';
+    title?: string;
+}) {
     return (
-        <div className="rounded-[6px] border bg-white p-4" style={{ borderColor: LINE }}>
+        <div className="rounded-[6px] border bg-white p-4" style={{ borderColor: LINE }} title={title}>
             <p className="text-xs font-medium" style={{ color: MUTED }}>
                 {label}
             </p>
-            <p className="mt-1.5 text-2xl font-semibold" style={{ color: tone === 'rose' ? ROSE : INK }}>
+            <p className="mt-1.5 text-2xl font-semibold" style={{ color: tone === 'rose' ? ROSE : tone === 'amber' ? AMBER : INK }}>
                 {typeof value === 'number' ? fmt(value) : value}
                 {suffix && <span className="ml-0.5 text-base font-medium" style={{ color: MUTED }}>{suffix}</span>}
             </p>
@@ -413,6 +428,13 @@ export default function AnaliticaIndex() {
                         label="Casos sociais"
                         value={kpis.casosSociais}
                         suffix={`(${fmt(kpis.taxaCasosSociais)}%)`}
+                    />
+                    <KpiTile
+                        label="Alta prevista ao fds, saída à 2ª"
+                        value={kpis.taxaAltaEstimadaFds}
+                        suffix="%"
+                        tone="amber"
+                        title={`${fmt(kpis.altaEstimadaFds)} doentes — alta estimada (entrada + média de dias de internamento do mesmo perfil: patologia, operado/não operado, admissão urgente/programada) cairia ao fim de semana, mas a saída real só ocorreu na segunda-feira seguinte`}
                     />
                 </div>
 
