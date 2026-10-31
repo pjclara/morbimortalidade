@@ -43,6 +43,30 @@ class InternamentoController extends Controller
                     ->whereNotNull('i2.data_saida')
                     ->whereColumn('i2.data_saida', '<=', 'internamentos.data_entrada')
                     ->whereRaw('DATEDIFF(internamentos.data_entrada, i2.data_saida) < 30'),
+
+                // Média de dias de internamento para o mesmo "perfil": mesma
+                // patologia (diagnóstico principal), mesma condição de operado/não
+                // operado (teve bloco operatório) e mesmo tipo de admissão
+                // (Urgência vs. programado, pela origem — mesmo critério usado em
+                // RelatorioCirurgiaController). Comparar dias de internamento entre
+                // perfis diferentes (ex: operado urgente vs. não operado programado)
+                // não é comparável, por isso a média tem de respeitar os três eixos.
+                'media_dias_diagnostico' => DB::table('diagnostico_internamento as di2')
+                    ->join('internamentos as i2', 'i2.id', '=', 'di2.internamento_id')
+                    ->selectRaw('AVG(i2.dias_internamento)')
+                    ->where('di2.principal', true)
+                    ->whereRaw(
+                        'di2.diagnostico_id = (select di1.diagnostico_id from diagnostico_internamento di1 '
+                        . 'where di1.internamento_id = internamentos.id and di1.principal = 1 limit 1)'
+                    )
+                    ->whereRaw(
+                        '(exists (select 1 from bloco_operatorios bo2 where bo2.internamento_id = i2.id)) '
+                        . '= (exists (select 1 from bloco_operatorios bo1 where bo1.internamento_id = internamentos.id))'
+                    )
+                    ->whereRaw(
+                        "(coalesce((select o2.nome from origems o2 where o2.id = i2.origem_id), '') = 'Urgência') "
+                        . "= (coalesce((select o1.nome from origems o1 where o1.id = internamentos.origem_id), '') = 'Urgência')"
+                    ),
             ]);
 
         /* -------------------------
@@ -144,17 +168,6 @@ class InternamentoController extends Controller
         }
 
         /* -------------------------
-        FILTRO: COM/SEM COMPLICAÇÕES
-        --------------------------*/
-        if ($request->filled('com_complicacoes')) {
-            if ($request->com_complicacoes === '1') {
-                $query->has('complicacaoInternamentos');
-            } elseif ($request->com_complicacoes === '0') {
-                $query->doesntHave('complicacaoInternamentos');
-            }
-        }
-
-        /* -------------------------
         FILTRO: READMISSÃO < 30 DIAS APÓS ALTA ANTERIOR
         --------------------------*/
         if ($request->filled('readmissao_30_dias')) {
@@ -162,6 +175,21 @@ class InternamentoController extends Controller
                 $query->havingRaw('readmissao_30_dias = 1');
             } elseif ($request->readmissao_30_dias === '0') {
                 $query->havingRaw('readmissao_30_dias = 0');
+            }
+        }
+
+        /* -------------------------
+        FILTRO: DIAS DE INTERNAMENTO ACIMA/ATÉ À MÉDIA DA PATOLOGIA
+        Compara cada internamento com a média de dias de internamento dos
+        internamentos com o mesmo diagnóstico principal (ver
+        `media_dias_diagnostico` no addSelect acima), não com a média geral
+        do serviço.
+        --------------------------*/
+        if ($request->filled('acima_media_dias')) {
+            if ($request->acima_media_dias === '1') {
+                $query->havingRaw('media_dias_diagnostico IS NOT NULL AND dias_internamento > media_dias_diagnostico');
+            } elseif ($request->acima_media_dias === '0') {
+                $query->havingRaw('media_dias_diagnostico IS NULL OR dias_internamento <= media_dias_diagnostico');
             }
         }
 
@@ -190,8 +218,8 @@ class InternamentoController extends Controller
             'falecido',
             'falecido_apos_alta',
             'bloco_operatorio',
-            'com_complicacoes',
             'readmissao_30_dias',
+            'acima_media_dias',
         ]);
 
         // filtros dinâmicos (ex: datas, tipo_filtro, bloco, etc.)
@@ -204,6 +232,7 @@ class InternamentoController extends Controller
             'items' => $internamentos->through(fn($i) => [
                 ...$i->toArray(),
                 'readmissao_30_dias' => (bool) $i->readmissao_30_dias,
+                'media_dias_diagnostico' => $i->media_dias_diagnostico !== null ? round((float) $i->media_dias_diagnostico, 1) : null,
                 'destino_options' => $destinoOptions,
                 'origem_options' => $origemOptions,
                 'responsavel_options' => $responsavelOptions,

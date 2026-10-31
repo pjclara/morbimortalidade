@@ -1,7 +1,7 @@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import InternamentoModal from '../../components/internamento/InternamentoModal';
 
@@ -38,8 +38,8 @@ interface Props {
         falecido?: boolean;
         falecido_apos_alta?: boolean;
         bloco_operatorio?: '0' | '1';
-        com_complicacoes?: '0' | '1';
         readmissao_30_dias?: '0' | '1';
+        acima_media_dias?: '0' | '1';
     };
     responsavel_options: Record<string, number>;
     clavien_options?: Record<string, number>;
@@ -64,13 +64,37 @@ const fieldInput =
 
 export default function Index({ items, filters, responsavel_options, clavien_options }: Props) {
     const [selected, setSelected] = useState<any>(null);
-    const currentFilters = filters ?? {};
+
+    // Estado local controlado, sincronizado com os filtros devolvidos pelo
+    // servidor. Sem isto, os campos usavam `defaultValue` (não controlados):
+    // ao "Limpar filtros" ou ao mudar dois filtros em sucessão rápida, o que
+    // aparecia no ecrã deixava de corresponder ao que estava realmente
+    // aplicado — e uma alteração podia perder-se por partir de um
+    // `currentFilters` desatualizado enquanto o pedido anterior ainda não
+    // tinha respondido.
+    const [draftFilters, setDraftFilters] = useState<any>(filters ?? {});
+
+    useEffect(() => {
+        setDraftFilters(filters ?? {});
+    }, [filters]);
+
+    const currentFilters = draftFilters;
 
     function openModal(item: InternamentoItem) {
         setSelected(item);
     }
 
+    function copyProcesso(processo: string | undefined | null) {
+        if (!processo) return;
+
+        navigator.clipboard
+            .writeText(String(processo))
+            .then(() => toast.success(`Processo ${processo} copiado.`))
+            .catch(() => toast.error('Não foi possível copiar o processo.'));
+    }
+
     function applyFilter(newFilters: any) {
+        setDraftFilters(newFilters);
         router.get('/internamentos', newFilters, {
             preserveState: true,
             preserveScroll: true,
@@ -79,7 +103,7 @@ export default function Index({ items, filters, responsavel_options, clavien_opt
 
     function handleFilterChange(key: string, value: any) {
         applyFilter({
-            ...currentFilters,
+            ...draftFilters,
             [key]: value || undefined,
         });
         toast.success('Filtros aplicados com sucesso!');
@@ -90,12 +114,13 @@ export default function Index({ items, filters, responsavel_options, clavien_opt
     function toggleClavien(id: string) {
         const next = selectedClavien.includes(id) ? selectedClavien.filter((v) => v !== id) : [...selectedClavien, id];
         applyFilter({
-            ...currentFilters,
+            ...draftFilters,
             clavien_dindo_id: next.length ? next : undefined,
         });
     }
 
     function clearFilters() {
+        setDraftFilters({});
         router.get(
             '/internamentos',
             {},
@@ -252,7 +277,8 @@ export default function Index({ items, filters, responsavel_options, clavien_opt
                             <span className={fieldLabel}>Processo</span>
                             <input
                                 className={fieldInput}
-                                defaultValue={currentFilters.processo ?? ''}
+                                value={draftFilters.processo ?? ''}
+                                onChange={(e) => setDraftFilters({ ...draftFilters, processo: e.target.value })}
                                 onBlur={(e) => handleFilterChange('processo', e.target.value)}
                             />
                         </div>
@@ -262,7 +288,7 @@ export default function Index({ items, filters, responsavel_options, clavien_opt
                             <input
                                 type="date"
                                 className={fieldInput}
-                                defaultValue={currentFilters.data_entrada_de ?? ''}
+                                value={currentFilters.data_entrada_de ?? ''}
                                 onChange={(e) => handleFilterChange('data_entrada_de', e.target.value)}
                             />
                         </div>
@@ -272,7 +298,7 @@ export default function Index({ items, filters, responsavel_options, clavien_opt
                             <input
                                 type="date"
                                 className={fieldInput}
-                                defaultValue={currentFilters.data_entrada_ate ?? ''}
+                                value={currentFilters.data_entrada_ate ?? ''}
                                 onChange={(e) => handleFilterChange('data_entrada_ate', e.target.value)}
                             />
                         </div>
@@ -281,7 +307,7 @@ export default function Index({ items, filters, responsavel_options, clavien_opt
                             <span className={fieldLabel}>Responsável</span>
                             <select
                                 className={fieldInput}
-                                defaultValue={currentFilters.responsavel_id ?? ''}
+                                value={currentFilters.responsavel_id ?? ''}
                                 onChange={(e) => handleFilterChange('responsavel_id', e.target.value)}
                             >
                                 <option value="">Todos</option>
@@ -318,7 +344,7 @@ export default function Index({ items, filters, responsavel_options, clavien_opt
                             <span className={fieldLabel}>Falecido</span>
                             <select
                                 className={fieldInput}
-                                defaultValue={currentFilters.falecido === true ? '1' : currentFilters.falecido === false ? '0' : ''}
+                                value={currentFilters.falecido === true || currentFilters.falecido === '1' ? '1' : currentFilters.falecido === false || currentFilters.falecido === '0' ? '0' : ''}
                                 onChange={(e) => handleFilterChange('falecido', e.target.value)}
                             >
                                 <option value="">Todos</option>
@@ -331,8 +357,12 @@ export default function Index({ items, filters, responsavel_options, clavien_opt
                             <span className={fieldLabel}>Faleceu após a alta</span>
                             <select
                                 className={fieldInput}
-                                defaultValue={
-                                    currentFilters.falecido_apos_alta === true ? '1' : currentFilters.falecido_apos_alta === false ? '0' : ''
+                                value={
+                                    currentFilters.falecido_apos_alta === true || currentFilters.falecido_apos_alta === '1'
+                                        ? '1'
+                                        : currentFilters.falecido_apos_alta === false || currentFilters.falecido_apos_alta === '0'
+                                          ? '0'
+                                          : ''
                                 }
                                 onChange={(e) => handleFilterChange('falecido_apos_alta', e.target.value)}
                             >
@@ -346,7 +376,7 @@ export default function Index({ items, filters, responsavel_options, clavien_opt
                             <span className={fieldLabel}>Bloco operatório</span>
                             <select
                                 className={fieldInput}
-                                defaultValue={currentFilters.bloco_operatorio ?? ''}
+                                value={currentFilters.bloco_operatorio ?? ''}
                                 onChange={(e) => handleFilterChange('bloco_operatorio', e.target.value)}
                             >
                                 <option value="">Todos</option>
@@ -356,15 +386,17 @@ export default function Index({ items, filters, responsavel_options, clavien_opt
                         </div>
 
                         <div className="flex flex-col gap-1">
-                            <span className={fieldLabel}>Complicações</span>
+                            <span className={fieldLabel} title="Compara com doentes da mesma patologia, operados/não operados e admissão urgente/programada">
+                                Dias de internamento vs. perfil
+                            </span>
                             <select
                                 className={fieldInput}
-                                defaultValue={currentFilters.com_complicacoes ?? ''}
-                                onChange={(e) => handleFilterChange('com_complicacoes', e.target.value)}
+                                value={currentFilters.acima_media_dias ?? ''}
+                                onChange={(e) => handleFilterChange('acima_media_dias', e.target.value)}
                             >
                                 <option value="">Todos</option>
-                                <option value="1">Com complicações</option>
-                                <option value="0">Sem complicações</option>
+                                <option value="1">Acima da média do perfil</option>
+                                <option value="0">Até à média do perfil</option>
                             </select>
                         </div>
 
@@ -372,7 +404,7 @@ export default function Index({ items, filters, responsavel_options, clavien_opt
                             <span className={fieldLabel}>Readmissão &lt;30 dias</span>
                             <select
                                 className={fieldInput}
-                                defaultValue={currentFilters.readmissao_30_dias ?? ''}
+                                value={currentFilters.readmissao_30_dias ?? ''}
                                 onChange={(e) => handleFilterChange('readmissao_30_dias', e.target.value)}
                             >
                                 <option value="">Todos</option>
@@ -447,7 +479,18 @@ export default function Index({ items, filters, responsavel_options, clavien_opt
                                                 className="px-4 py-2.5 tabular-nums"
                                                 style={{ fontFamily: "'IBM Plex Mono', ui-monospace, monospace", color: INK }}
                                             >
-                                                {i.patient?.processo ?? '-'}
+                                                {i.patient?.processo ? (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => copyProcesso(i.patient?.processo)}
+                                                        className="cursor-pointer rounded-[3px] decoration-dotted underline-offset-2 hover:underline"
+                                                        title="Clicar para copiar o número de processo"
+                                                    >
+                                                        {i.patient.processo}
+                                                    </button>
+                                                ) : (
+                                                    '-'
+                                                )}
                                             </td>
                                             <td
                                                 className="px-4 py-2.5 tabular-nums"
@@ -461,12 +504,33 @@ export default function Index({ items, filters, responsavel_options, clavien_opt
                                             >
                                                 {i.data_saida ?? '-'}
                                             </td>
-                                            <td
-                                                className="px-4 py-2.5 tabular-nums"
-                                                style={{ fontFamily: "'IBM Plex Mono', ui-monospace, monospace" }}
-                                            >
-                                                {i.dias_internamento ?? '-'}
-                                            </td>
+                                            {(() => {
+                                                const acimaMediaPatologia =
+                                                    typeof i.media_dias_diagnostico === 'number' &&
+                                                    i.dias_internamento != null &&
+                                                    i.dias_internamento > i.media_dias_diagnostico;
+
+                                                const operado = (i.bloco_operatorios_count ?? 0) > 0;
+                                                const urgente = i.origem?.nome === 'Urgência';
+
+                                                return (
+                                                    <td
+                                                        className="px-4 py-2.5 tabular-nums"
+                                                        style={{
+                                                            fontFamily: "'IBM Plex Mono', ui-monospace, monospace",
+                                                            color: acimaMediaPatologia ? AMBER : undefined,
+                                                            fontWeight: acimaMediaPatologia ? 600 : undefined,
+                                                        }}
+                                                        title={
+                                                            typeof i.media_dias_diagnostico === 'number'
+                                                                ? `Média para doentes com a mesma patologia, ${operado ? 'operados' : 'não operados'} e admissão ${urgente ? 'urgente' : 'programada'}: ${i.media_dias_diagnostico} dias`
+                                                                : undefined
+                                                        }
+                                                    >
+                                                        {i.dias_internamento ?? '-'}
+                                                    </td>
+                                                );
+                                            })()}
                                             <td className="px-4 py-2.5">
                                                 {i.destino?.nome ?? '-'}
                                                 {i.falecido_apos_alta ? (
@@ -487,7 +551,14 @@ export default function Index({ items, filters, responsavel_options, clavien_opt
                                                     </span>
                                                 ) : null}
                                             </td>
-                                            <td className="px-4 py-2.5">{i.diagnosticos?.find((d: any) => d.pivot?.principal)?.nome ?? '-'}</td>
+                                            <td className="px-4 py-2.5">
+                                                {i.diagnosticos?.find((d: any) => d.pivot?.principal)?.nome ?? '-'}
+                                                {typeof i.media_dias_diagnostico === 'number' && (
+                                                    <span className="ml-1.5 text-xs" style={{ color: '#5B685F' }}>
+                                                        (média {i.media_dias_diagnostico}d)
+                                                    </span>
+                                                )}
+                                            </td>
                                             <td className="px-4 py-2.5">{i.clavien_dindo?.nome ?? '-'}</td>
                                             <td className="px-4 py-2.5">{i.responsavel?.name ?? '-'}</td>
                                             <td className="group relative px-4 py-2.5">
