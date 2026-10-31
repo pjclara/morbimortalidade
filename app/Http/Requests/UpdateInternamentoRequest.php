@@ -96,6 +96,9 @@ class UpdateInternamentoRequest extends FormRequest
                 'date',
                 $internamento?->data_saida ? Rule::date()->afterOrEqual($internamento->data_saida) : 'date',
             ],
+
+            'data_admissao_urgencia' => 'nullable|date',
+            'episodio_urgencia' => 'nullable|integer',
         ];
     }
 

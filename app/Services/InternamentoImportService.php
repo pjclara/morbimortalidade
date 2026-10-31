@@ -124,6 +124,11 @@ class InternamentoImportService
             'destino_id'          => $destinoId,
             'origem_id'           => $origemId,
             'falecido'            => $destinoId == 3,
+            // Permanência na Urgência antes deste internamento, quando o
+            // export do SONHO as traz (nem todos os episódios vêm da
+            // Urgência).
+            'data_admissao_urgencia' => $row['DTA_ADMISSAO'] ?? null,
+            'episodio_urgencia'      => $row['URG_EPISODIO'] ?? null,
         ]);
 
         // Atualiza a cache com o id real, para que linhas seguintes do mesmo
