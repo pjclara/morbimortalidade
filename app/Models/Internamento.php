@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
 class Internamento extends Model
 {
@@ -85,5 +87,31 @@ class Internamento extends Model
     {
         return $this->belongsToMany(Diagnostico::class)->withPivot('principal');
     }
-    
+
+    public function atrasosAlta()
+    {
+        return $this->hasMany(AtrasoAlta::class, 'internamento_id', 'id')->with('motivo');
+    }
+
+    /**
+     * Dias de atraso entre a decisão clínica de alta (`data_alta`) e a saída
+     * efetiva (`data_saida`). Primeiro accessor do projeto (o padrão até
+     * aqui era não ter nenhum) — necessário porque este valor é usado tanto
+     * na UI (mostrar/escolher secção de atraso) como nos indicadores do
+     * serviço, e não faz sentido duplicar o cálculo nos dois sítios.
+     */
+    protected function diasAtrasoAlta(): Attribute
+    {
+        return Attribute::make(
+            get: function () {
+                if (!$this->data_alta || !$this->data_saida) {
+                    return null;
+                }
+
+                $dias = (int) Carbon::parse($this->data_alta)->diffInDays(Carbon::parse($this->data_saida), false);
+
+                return $dias > 0 ? $dias : null;
+            },
+        );
+    }
 }

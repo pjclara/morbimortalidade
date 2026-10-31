@@ -122,8 +122,8 @@ return new class extends Migration
             });
         }
 
-        if (!Schema::hasTable('tipo_de_cirurgia')) {
-            Schema::create('tipo_de_cirurgia', function (Blueprint $table) {
+        if (!Schema::hasTable('tipo_de_cirurgias')) {
+            Schema::create('tipo_de_cirurgias', function (Blueprint $table) {
                 $table->id();
                 $table->string('nome');
                 $table->timestamps();

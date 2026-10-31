@@ -2,22 +2,6 @@
 
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
-
-beforeEach(function () {
-    Schema::create('roles', function ($table) {
-        $table->id();
-        $table->string('name');
-        $table->string('guard_name');
-        $table->timestamps();
-    });
-
-    Schema::create('model_has_roles', function ($table) {
-        $table->unsignedBigInteger('role_id');
-        $table->string('model_type');
-        $table->unsignedBigInteger('model_id');
-    });
-});
 
 test('login screen can be rendered', function () {
     $response = $this->get('/login');

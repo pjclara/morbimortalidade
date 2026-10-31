@@ -13,6 +13,7 @@ use App\Models\Origem;
 use App\Models\Resolucao;
 use App\Models\TipoDeCirurgia;
 use App\Models\User;
+use App\Http\Requests\UpdateInternamentoRequest;
 use App\Services\BlocoOperatorioImportService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -329,44 +330,58 @@ class InternamentoController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, string $id)
+    public function update(UpdateInternamentoRequest $request, string $id)
     {
         $internamento = Internamento::findOrFail($id);
 
-        $validatedData = $request->validate([
-            'destino_id' => 'nullable|exists:destinos,id',
-            'data_alta' => [
-                'nullable',
-                'date',
-                Rule::date()->beforeOrEqual($internamento->data_saida),
-            ],
-            'origem_id' => 'nullable|exists:origems,id',
-            'responsavel_id' => 'nullable|exists:users,id',
-            'clavien_dindo_id' => 'nullable|exists:clavien_dindos,id',
-            'falecido' => 'nullable|boolean',
-            'falecido_apos_alta' => 'nullable|boolean',
-            'causas_readmissao' => 'nullable|array',
-            'causas_readmissao.*' => [Rule::in(Internamento::CAUSAS_READMISSAO_OPTIONS)],
-            'mortalidade_esperada' => 'nullable|boolean',
-            'observacoes' => 'nullable|string|max:1000',
-            'complicacao_internamentos' => 'nullable|array',
-            'complicacao_internamentos.*.id' => 'nullable|exists:complicacao_internamento,id',
-            'complicacao_internamentos.*.complicacao_id' => 'nullable|exists:complicacaos,id',
-            'complicacao_internamentos.*.momento' => ['nullable', Rule::in(ComplicacaoInternamento::MOMENTO_OPTIONS)],
-            'complicacao_internamentos.*.resolucaos' => 'nullable|array',
-            'complicacao_internamentos.*.resolucaos.*.id' => 'nullable|exists:resolucaos,id',
-        ]);
+        $validatedData = $request->validated();
 
         $complicacaoInternamentosData = $validatedData['complicacao_internamentos'] ?? [];
         unset($validatedData['complicacao_internamentos']);
+
+        $atrasosAltaData = $validatedData['atrasos_alta'] ?? [];
+        unset($validatedData['atrasos_alta']);
 
         // Guardado à parte porque, sem complicações, o Clavien-Dindo é
         // sempre recalculado a seguir — só sobrevive se for explicitamente
         // o grau "Sem complicações" escolhido no separador Complicações.
         $requestedClavienDindoId = $validatedData['clavien_dindo_id'] ?? null;
 
-        DB::transaction(function () use ($internamento, $validatedData, $complicacaoInternamentosData, $requestedClavienDindoId) {
+        DB::transaction(function () use ($internamento, $validatedData, $complicacaoInternamentosData, $atrasosAltaData, $requestedClavienDindoId) {
             $internamento->update($validatedData);
+
+            // ---------------------------------------------------------
+            // Sincronizar atrasos de alta (array repetível, igual ao
+            // padrão de complicacao_internamentos abaixo)
+            // ---------------------------------------------------------
+            $incomingAtrasoIds = [];
+
+            foreach ($atrasosAltaData as $atrasoData) {
+                $dados = [
+                    'motivo_id' => $atrasoData['motivo_id'] ?? null,
+                    'data_sinalizacao_servico_social' => $atrasoData['data_sinalizacao_servico_social'] ?? null,
+                    'data_pedido_rede' => $atrasoData['data_pedido_rede'] ?? null,
+                    'observacoes' => $atrasoData['observacoes'] ?? null,
+                ];
+
+                if (!empty($atrasoData['id'])) {
+                    $atraso = $internamento->atrasosAlta()->where('id', $atrasoData['id'])->first();
+
+                    if ($atraso) {
+                        if ($dados['motivo_id']) {
+                            $atraso->update($dados);
+                            $incomingAtrasoIds[] = $atraso->id;
+                        } else {
+                            $atraso->delete();
+                        }
+                    }
+                } elseif ($dados['motivo_id']) {
+                    $atraso = $internamento->atrasosAlta()->create($dados);
+                    $incomingAtrasoIds[] = $atraso->id;
+                }
+            }
+
+            $internamento->atrasosAlta()->whereNotIn('id', $incomingAtrasoIds)->delete();
 
             $incomingIds = [];
 
