@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class ClavienDindo extends Model
 {
+    use HasFactory;
+
     // Grau usado para assinalar explicitamente "sem complicações" num
     // internamento com bloco operatório, sem exigir complicações registadas.
     const SEM_COMPLICACOES_ID = 10;

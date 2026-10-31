@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Internamento extends Model
 {
+    use HasFactory;
+
     /**
      * Causas selecionáveis para um reinternamento identificado como
      * readmissão (<30 dias após uma alta anterior do mesmo doente). Guardadas
