@@ -24,7 +24,10 @@ class InternamentoFactory extends Factory
             'data_alta' => null,
             'data_saida' => $dataSaida->format('Y-m-d'),
             'dias_internamento' => $dataEntrada->diff($dataSaida)->days,
-            'destino_id' => Destino::factory(),
+            // 'Domicílio' por omissão — evita que testes que não mexem no
+            // destino caiam aleatoriamente em "Transf Interna" (que exige
+            // `servico_destino`) por causa do randomElement do DestinoFactory.
+            'destino_id' => Destino::factory()->state(['nome' => 'Domicílio']),
             'origem_id' => Origem::factory(),
             'falecido' => false,
             'falecido_apos_alta' => false,

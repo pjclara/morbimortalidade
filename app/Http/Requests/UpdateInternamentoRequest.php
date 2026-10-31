@@ -81,6 +81,21 @@ class UpdateInternamentoRequest extends FormRequest
             'atrasos_alta.*.data_sinalizacao_servico_social' => 'nullable|date',
             'atrasos_alta.*.data_pedido_rede' => 'nullable|date',
             'atrasos_alta.*.observacoes' => 'nullable|string|max:1000',
+
+            'readmissao_planeada' => 'nullable|boolean',
+            'readmissao_relacionada' => 'nullable|boolean',
+            'consulta_pos_alta_marcada' => 'nullable|boolean',
+            'data_consulta_pos_alta' => [
+                'nullable',
+                'date',
+                $internamento?->data_saida ? Rule::date()->afterOrEqual($internamento->data_saida) : 'date',
+            ],
+            'contacto_telefonico_pos_alta' => 'nullable|boolean',
+            'data_contacto_pos_alta' => [
+                'nullable',
+                'date',
+                $internamento?->data_saida ? Rule::date()->afterOrEqual($internamento->data_saida) : 'date',
+            ],
         ];
     }
 

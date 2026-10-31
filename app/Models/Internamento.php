@@ -28,7 +28,7 @@ class Internamento extends Model
         'outra',
     ];
 
-    protected $fillable = ['bloquear', 'causas_readmissao', 'clavien_dindo_id', 'data_alta', 'data_entrada', 'data_saida', 'destino_detalhe_id', 'destino_id', 'dias_internamento', 'episodio', 'equipa_id', 'falecido', 'falecido_apos_alta', 'mortalidade_esperada', 'observacoes', 'origem_id', 'patient_id', 'responsavel_id', 'servico_destino'];
+    protected $fillable = ['bloquear', 'causas_readmissao', 'clavien_dindo_id', 'consulta_pos_alta_marcada', 'contacto_telefonico_pos_alta', 'data_alta', 'data_consulta_pos_alta', 'data_contacto_pos_alta', 'data_entrada', 'data_saida', 'destino_detalhe_id', 'destino_id', 'dias_internamento', 'episodio', 'equipa_id', 'falecido', 'falecido_apos_alta', 'mortalidade_esperada', 'observacoes', 'origem_id', 'patient_id', 'readmissao_planeada', 'readmissao_relacionada', 'responsavel_id', 'servico_destino'];
 
     protected $casts = [
         'causas_readmissao' => 'array',
@@ -96,6 +96,58 @@ class Internamento extends Model
     public function atrasosAlta()
     {
         return $this->hasMany(AtrasoAlta::class, 'internamento_id', 'id')->with('motivo');
+    }
+
+    /**
+     * Filtra internamentos que são readmissões a 30 dias: existe, para o
+     * mesmo doente, um internamento anterior com saída (`data_saida`) até
+     * 30 dias antes desta entrada (`data_entrada`). Reaproveita a mesma
+     * condição já usada em `InternamentoController::index` (coluna
+     * `readmissao_30_dias`), agora como scope reutilizável nos indicadores.
+     *
+     * A diferença de dias é calculada de forma dependente do motor de BD
+     * (`DATEDIFF` em MySQL, `julianday` em sqlite) porque a produção corre
+     * em MySQL mas os testes correm em sqlite — sem isto o scope não seria
+     * testável.
+     */
+    public function scopeReadmissaoA30Dias($query)
+    {
+        $driver = $query->getConnection()->getDriverName();
+
+        $diffExpr = $driver === 'sqlite'
+            ? 'julianday(internamentos.data_entrada) - julianday(i2.data_saida)'
+            : 'DATEDIFF(internamentos.data_entrada, i2.data_saida)';
+
+        return $query->whereExists(function ($sub) use ($diffExpr) {
+            $sub->selectRaw('1')
+                ->from('internamentos as i2')
+                ->whereColumn('i2.patient_id', 'internamentos.patient_id')
+                ->whereColumn('i2.id', '!=', 'internamentos.id')
+                ->whereNotNull('i2.data_saida')
+                ->whereColumn('i2.data_saida', '<=', 'internamentos.data_entrada')
+                ->whereRaw("{$diffExpr} < 30");
+        });
+    }
+
+    /**
+     * O internamento anterior do mesmo doente que torna este internamento
+     * uma readmissão a 30 dias (o mais recente que cumpre a condição), ou
+     * null se este não for uma readmissão.
+     */
+    public function internamentoIndice(): ?self
+    {
+        if (!$this->patient_id || !$this->data_entrada) {
+            return null;
+        }
+
+        return static::where('patient_id', $this->patient_id)
+            ->where('id', '!=', $this->id)
+            ->whereNotNull('data_saida')
+            ->where('data_saida', '<=', $this->data_entrada)
+            ->get()
+            ->filter(fn (self $i) => Carbon::parse($i->data_saida)->diffInDays(Carbon::parse($this->data_entrada)) < 30)
+            ->sortByDesc('data_saida')
+            ->first();
     }
 
     /**
