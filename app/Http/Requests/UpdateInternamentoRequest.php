@@ -107,6 +107,11 @@ class UpdateInternamentoRequest extends FormRequest
             ],
             'hora_alta' => 'nullable|date_format:H:i',
             'motivo_nao_antecipacao_alta_id' => 'nullable|exists:motivos_nao_antecipacao_alta,id',
+
+            'asa' => 'nullable|integer|between:1,5',
+            'indice_charlson' => 'nullable|integer|min:0',
+            'dias_cuidados_intermedios' => 'nullable|integer|min:0',
+            'dias_cuidados_intensivos' => 'nullable|integer|min:0',
         ];
     }
 
