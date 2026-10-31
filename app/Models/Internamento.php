@@ -28,7 +28,7 @@ class Internamento extends Model
         'outra',
     ];
 
-    protected $fillable = ['bloquear', 'causas_readmissao', 'clavien_dindo_id', 'data_alta', 'data_entrada', 'data_saida', 'destino_id', 'dias_internamento', 'episodio', 'equipa_id', 'falecido', 'falecido_apos_alta', 'mortalidade_esperada', 'observacoes', 'origem_id', 'patient_id', 'responsavel_id'];
+    protected $fillable = ['bloquear', 'causas_readmissao', 'clavien_dindo_id', 'data_alta', 'data_entrada', 'data_saida', 'destino_detalhe_id', 'destino_id', 'dias_internamento', 'episodio', 'equipa_id', 'falecido', 'falecido_apos_alta', 'mortalidade_esperada', 'observacoes', 'origem_id', 'patient_id', 'responsavel_id', 'servico_destino'];
 
     protected $casts = [
         'causas_readmissao' => 'array',
@@ -44,6 +44,11 @@ class Internamento extends Model
     public function destino()
     {
         return $this->belongsTo(Destino::class, 'destino_id', 'id');
+    }
+
+    public function destinoDetalhe()
+    {
+        return $this->belongsTo(DestinoDetalhe::class, 'destino_detalhe_id', 'id');
     }
 
     public function equipa()

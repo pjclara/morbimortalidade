@@ -12,7 +12,7 @@ class OrigemFactory extends Factory
     public function definition(): array
     {
         return [
-            'nome' => fake()->unique()->randomElement(['Urgência', 'Consulta', 'Programado']),
+            'nome' => fake()->randomElement(['Urgência', 'Consulta', 'Programado']),
         ];
     }
 }

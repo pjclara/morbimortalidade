@@ -12,7 +12,7 @@ class DestinoFactory extends Factory
     public function definition(): array
     {
         return [
-            'nome' => fake()->unique()->randomElement(['Domicílio', 'Falecido', 'Transf Interna', 'Outro Hospital']),
+            'nome' => fake()->randomElement(['Domicílio', 'Falecido', 'Transf Interna', 'Outro Hospital']),
         ];
     }
 }

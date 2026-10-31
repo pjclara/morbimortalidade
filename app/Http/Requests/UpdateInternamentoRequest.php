@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Models\ComplicacaoInternamento;
+use App\Models\Destino;
 use App\Models\Internamento;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -24,12 +25,35 @@ class UpdateInternamentoRequest extends FormRequest
         return Internamento::find($this->route('internamento'));
     }
 
+    /**
+     * O campo `servico_destino` só é obrigatório quando o destino escolhido
+     * (no pedido, ou o atual do internamento se o pedido não o alterar) é
+     * "Transf Interna" — não há tabela de serviços do hospital, por isso é
+     * texto livre (ver decisão no plano de implementação).
+     */
+    protected function exigeServicoDestino(?Internamento $internamento): bool
+    {
+        $destinoId = $this->input('destino_id', $internamento?->destino_id);
+
+        if (!$destinoId) {
+            return false;
+        }
+
+        return Destino::where('id', $destinoId)->where('nome', 'Transf Interna')->exists();
+    }
+
     public function rules(): array
     {
         $internamento = $this->internamento();
 
         return [
             'destino_id' => 'nullable|exists:destinos,id',
+            'destino_detalhe_id' => 'nullable|exists:destino_detalhes,id',
+            'servico_destino' => [
+                $this->exigeServicoDestino($internamento) ? 'required' : 'nullable',
+                'string',
+                'max:255',
+            ],
             'data_alta' => [
                 'nullable',
                 'date',
