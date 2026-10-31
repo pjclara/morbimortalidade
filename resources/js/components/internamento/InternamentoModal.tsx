@@ -21,6 +21,10 @@ const TAB_LABELS: Record<string, string> = {
     destino: 'Origem / Destino',
     observacoes: 'Observações',
     responsavel: 'Responsável',
+    atraso_alta: 'Atraso após Alta',
+    readmissao: 'Readmissão',
+    urgencia: 'Urgência',
+    doente_complexo: 'Doente Complexo',
 };
 
 // Em que separador vive cada campo — usado para assinalar erros do backend
@@ -38,9 +42,26 @@ const FIELD_TAB_MAP: Record<string, string> = {
     'patient.sexo_id': 'paciente',
     origem_id: 'destino',
     destino_id: 'destino',
+    destino_detalhe_id: 'destino',
+    servico_destino: 'destino',
+    data_prevista_alta: 'destino',
+    hora_alta: 'destino',
+    motivo_nao_antecipacao_alta_id: 'destino',
     responsavel_id: 'responsavel',
     clavien_dindo_id: 'clavien',
     observacoes: 'observacoes',
+    readmissao_planeada: 'readmissao',
+    readmissao_relacionada: 'readmissao',
+    consulta_pos_alta_marcada: 'readmissao',
+    data_consulta_pos_alta: 'readmissao',
+    contacto_telefonico_pos_alta: 'readmissao',
+    data_contacto_pos_alta: 'readmissao',
+    data_admissao_urgencia: 'urgencia',
+    episodio_urgencia: 'urgencia',
+    asa: 'doente_complexo',
+    indice_charlson: 'doente_complexo',
+    dias_cuidados_intermedios: 'doente_complexo',
+    dias_cuidados_intensivos: 'doente_complexo',
 };
 
 // Grau Clavien-Dindo usado para assinalar explicitamente "sem complicações"
@@ -49,6 +70,7 @@ const SEM_COMPLICACOES_CLAVIEN_ID = 10;
 
 function tabForErrorKey(key: string): string | undefined {
     if (key.startsWith('complicacao_internamentos')) return 'complicacoes';
+    if (key.startsWith('atrasos_alta')) return 'atraso_alta';
     return FIELD_TAB_MAP[key];
 }
 
@@ -140,10 +162,19 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
     // Calculado a cada render a partir do `item` atual — o modal é montado uma
     // única vez pela página e reutilizado para internamentos diferentes, por
     // isso os separadores não podem ficar "congelados" num useState inicial.
+    // O separador de atraso só interessa quando a saída já passou a data da
+    // alta clínica (ver Internamento::dias_atraso_alta, no backend) — mesma
+    // regra calculada aqui no cliente sobre os valores atuais do formulário.
+    const dataAltaAtual = form.data_alta ?? item?.data_alta;
+    const dataSaidaAtual = form.data_saida ?? item?.data_saida;
+    const temAtrasoAlta = !!(dataAltaAtual && dataSaidaAtual && dataSaidaAtual > dataAltaAtual);
+
+    const tabsComuns = ['readmissao', 'urgencia', 'doente_complexo', ...(temAtrasoAlta ? ['atraso_alta'] : [])];
+
     const tabs =
         item?.bloco_operatorios_count > 0
-            ? [...INITIAL_TABS, 'bloco_operatorios', 'complicacoes', 'clavien', 'destino', 'observacoes', 'responsavel']
-            : [...INITIAL_TABS, 'destino', 'observacoes', 'responsavel'];
+            ? [...INITIAL_TABS, 'bloco_operatorios', 'complicacoes', 'clavien', 'destino', 'observacoes', 'responsavel', ...tabsComuns]
+            : [...INITIAL_TABS, 'destino', 'observacoes', 'responsavel', ...tabsComuns];
 
     const pageProps: any = usePage().props;
 
@@ -175,9 +206,44 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
 
     if (!open) return null;
 
-    const editableFields = ['observacoes', 'mortalidade_esperada', 'bloquear', 'data_alta', 'principal', 'falecido_apos_alta', 'causas_readmissao'];
-    const booleanFields = ['mortalidade_esperada', 'falecido', 'bloquear', 'principal', 'falecido_apos_alta'];
-    const dataFields = ['data_alta'];
+    const editableFields = [
+        'observacoes',
+        'mortalidade_esperada',
+        'bloquear',
+        'data_alta',
+        'principal',
+        'falecido_apos_alta',
+        'causas_readmissao',
+        'destino_detalhe_id',
+        'servico_destino',
+        'data_prevista_alta',
+        'hora_alta',
+        'motivo_nao_antecipacao_alta_id',
+        'readmissao_planeada',
+        'readmissao_relacionada',
+        'consulta_pos_alta_marcada',
+        'data_consulta_pos_alta',
+        'contacto_telefonico_pos_alta',
+        'data_contacto_pos_alta',
+        'data_admissao_urgencia',
+        'episodio_urgencia',
+        'asa',
+        'indice_charlson',
+        'dias_cuidados_intermedios',
+        'dias_cuidados_intensivos',
+    ];
+    const booleanFields = [
+        'mortalidade_esperada',
+        'falecido',
+        'bloquear',
+        'principal',
+        'falecido_apos_alta',
+        'readmissao_planeada',
+        'readmissao_relacionada',
+        'consulta_pos_alta_marcada',
+        'contacto_telefonico_pos_alta',
+    ];
+    const dataFields = ['data_alta', 'data_prevista_alta', 'data_consulta_pos_alta', 'data_contacto_pos_alta', 'data_admissao_urgencia'];
     const textFields = ['observacoes'];
 
     const optionsSource: any = form || item;
@@ -204,6 +270,18 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
 
         complicacao_id: getOptionValue('complicacao_options')
             ? Object.entries(getOptionValue('complicacao_options')).map(([nome, id]) => ({ id, nome }))
+            : null,
+
+        destino_detalhe_id: getOptionValue('destino_detalhe_options')
+            ? Object.entries(getOptionValue('destino_detalhe_options')).map(([nome, id]) => ({ id, nome }))
+            : null,
+
+        motivo_nao_antecipacao_alta_id: getOptionValue('motivo_nao_antecipacao_alta_options')
+            ? Object.entries(getOptionValue('motivo_nao_antecipacao_alta_options')).map(([nome, id]) => ({ id, nome }))
+            : null,
+
+        motivo_id: getOptionValue('motivo_atraso_options')
+            ? Object.entries(getOptionValue('motivo_atraso_options')).map(([nome, id]) => ({ id, nome }))
             : null,
     };
 
@@ -235,6 +313,36 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
         setComplicacaoInternamentos(
             complicacaoInternamentos.map((item: any) => (getComplicacaoKey(item) === getComplicacaoKey(ci) ? { ...item, ...patch } : item)),
         );
+    }
+
+    const atrasosAlta = form.atrasosAlta ?? form.atrasos_alta ?? item?.atrasosAlta ?? item?.atrasos_alta ?? [];
+
+    function setAtrasosAlta(updated: any[]) {
+        setForm({
+            ...form,
+            atrasosAlta: updated,
+            atrasos_alta: updated,
+        });
+        setIsDirty(true);
+    }
+
+    function getAtrasoKey(atraso: any) {
+        return atraso.id ?? atraso._tempId;
+    }
+
+    function addAtrasoAlta() {
+        setAtrasosAlta([
+            ...atrasosAlta,
+            { _tempId: Date.now(), motivo_id: null, data_sinalizacao_servico_social: null, data_pedido_rede: null, observacoes: null },
+        ]);
+    }
+
+    function removeAtrasoAlta(atraso: any) {
+        setAtrasosAlta(atrasosAlta.filter((a: any) => getAtrasoKey(a) !== getAtrasoKey(atraso)));
+    }
+
+    function updateAtrasoAlta(atraso: any, patch: any) {
+        setAtrasosAlta(atrasosAlta.map((a: any) => (getAtrasoKey(a) === getAtrasoKey(atraso) ? { ...a, ...patch } : a)));
     }
 
     // "Sem complicações" é representado pelo grau Clavien-Dindo especial
@@ -301,6 +409,13 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
                 complicacao_id: ci.complicacao_id,
                 momento: ci.momento,
                 resolucaos: ci.resolucaos?.map((r: any) => ({ id: r.id })) ?? [],
+            })),
+            atrasos_alta: atrasosAlta.map((a: any) => ({
+                id: a.id,
+                motivo_id: a.motivo_id,
+                data_sinalizacao_servico_social: a.data_sinalizacao_servico_social,
+                data_pedido_rede: a.data_pedido_rede,
+                observacoes: a.observacoes,
             })),
         };
 
@@ -375,8 +490,10 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
 
     const filteredResolucoes = (selectFields.resolucao_id ?? []).filter((opt: any) => opt.nome.toLowerCase().includes(searchResolucao.toLowerCase()));
     function renderField(label: string, key: string, value: any, info?: string) {
-        const isBoolean = value === 0 || value === 1 || typeof value === 'boolean';
         const isBooleanField = booleanFields.includes(key);
+        // Campos booleanos nullable (ex: readmissao_planeada) começam a null
+        // — sem isto cairiam no input de texto genérico em vez do checkbox.
+        const isBoolean = isBooleanField || value === 0 || value === 1 || typeof value === 'boolean';
         const isDataField = dataFields.includes(key);
         const isTextField = textFields.includes(key);
         const isEditable = editableFields.includes(key);
@@ -684,6 +801,21 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
                             <>
                                 {renderField('Origem', 'origem_id', item.origem?.nome)}
                                 {renderField('Destino', 'destino_id', item.destino?.nome)}
+                                {renderField('Detalhe do Destino', 'destino_detalhe_id', item.destino_detalhe?.nome)}
+                                {renderField(
+                                    'Serviço de Destino',
+                                    'servico_destino',
+                                    item.servico_destino,
+                                    'Preencher quando o destino é uma transferência interna.',
+                                )}
+                                {renderField('Data Prevista de Alta', 'data_prevista_alta', item.data_prevista_alta)}
+                                {renderField('Hora da Alta', 'hora_alta', item.hora_alta)}
+                                {renderField(
+                                    'Motivo de Não Antecipação',
+                                    'motivo_nao_antecipacao_alta_id',
+                                    item.motivo_nao_antecipacao_alta?.nome,
+                                    'Porque é que a alta não saiu mais cedo, quando a data prevista não se cumpriu.',
+                                )}
                             </>
                         )}
 
@@ -734,6 +866,192 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
                         )}
 
                         {tab === 'observacoes' && <>{renderField('Observações', 'observacoes', item.observacoes ?? '-')}</>}
+
+                        {tab === 'readmissao' && (
+                            <>
+                                {renderField('Readmissão Planeada', 'readmissao_planeada', form.readmissao_planeada ?? item.readmissao_planeada)}
+                                {renderField(
+                                    'Readmissão Relacionada',
+                                    'readmissao_relacionada',
+                                    form.readmissao_relacionada ?? item.readmissao_relacionada,
+                                )}
+                                {renderField(
+                                    'Consulta Pós-Alta Marcada',
+                                    'consulta_pos_alta_marcada',
+                                    form.consulta_pos_alta_marcada ?? item.consulta_pos_alta_marcada,
+                                )}
+                                {renderField('Data da Consulta Pós-Alta', 'data_consulta_pos_alta', item.data_consulta_pos_alta)}
+                                {renderField(
+                                    'Contacto Telefónico Pós-Alta',
+                                    'contacto_telefonico_pos_alta',
+                                    form.contacto_telefonico_pos_alta ?? item.contacto_telefonico_pos_alta,
+                                )}
+                                {renderField('Data do Contacto Pós-Alta', 'data_contacto_pos_alta', item.data_contacto_pos_alta)}
+                            </>
+                        )}
+
+                        {tab === 'urgencia' && (
+                            <>
+                                {renderField('Admissão na Urgência', 'data_admissao_urgencia', item.data_admissao_urgencia)}
+                                {renderField('Episódio da Urgência', 'episodio_urgencia', item.episodio_urgencia)}
+                                {renderField('Dias de Permanência na Urgência', 'dias_permanencia_urgencia', item.dias_permanencia_urgencia)}
+                            </>
+                        )}
+
+                        {tab === 'doente_complexo' && (
+                            <>
+                                {renderField('ASA', 'asa', item.asa, 'Classificação ASA (1 a 5).')}
+                                {renderField('Índice de Charlson', 'indice_charlson', item.indice_charlson)}
+                                {renderField('Dias em Cuidados Intermédios', 'dias_cuidados_intermedios', item.dias_cuidados_intermedios)}
+                                {renderField('Dias em Cuidados Intensivos', 'dias_cuidados_intensivos', item.dias_cuidados_intensivos)}
+                            </>
+                        )}
+
+                        {tab === 'atraso_alta' && (
+                            <>
+                                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                                    <h3 className="text-base font-semibold" style={{ color: '#17241F' }}>
+                                        Atraso após a Alta Clínica
+                                    </h3>
+                                    {editMode && (
+                                        <button
+                                            type="button"
+                                            onClick={addAtrasoAlta}
+                                            className="rounded-[4px] border px-3 py-1.5 text-sm font-medium transition hover:bg-[#E3EFEA]"
+                                            style={{ borderColor: CLINICAL, color: CLINICAL }}
+                                        >
+                                            Adicionar Motivo
+                                        </button>
+                                    )}
+                                </div>
+
+                                <div className="space-y-4">
+                                    {atrasosAlta.length === 0 && (
+                                        <p className="text-sm" style={{ color: '#5B685F' }}>
+                                            Nenhum motivo de atraso registado.
+                                        </p>
+                                    )}
+
+                                    {atrasosAlta.map((atraso: any, index: number) => {
+                                        const atrasoKey = getAtrasoKey(atraso);
+                                        const motivoId = atraso.motivo_id ?? atraso.motivo?.id ?? '';
+                                        const motivoNome = (selectFields.motivo_id ?? []).find((m: any) => m.id == motivoId)?.nome ?? atraso.motivo?.nome;
+
+                                        return (
+                                            <div key={atrasoKey} className="overflow-hidden rounded-[6px] border" style={{ borderColor: LINE }}>
+                                                <div
+                                                    className="flex items-center justify-between border-b px-5 py-3"
+                                                    style={{ borderColor: LINE, backgroundColor: PAPER }}
+                                                >
+                                                    <h4 className="text-sm font-semibold" style={{ color: INK }}>
+                                                        Motivo #{index + 1}{!editMode && motivoNome ? ` — ${motivoNome}` : ''}
+                                                    </h4>
+
+                                                    {editMode && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => removeAtrasoAlta(atraso)}
+                                                            className="rounded-[4px] p-2 transition hover:bg-[#FBE7E4]"
+                                                            style={{ color: ROSE }}
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </button>
+                                                    )}
+                                                </div>
+
+                                                <div className="space-y-4 p-5">
+                                                    <div>
+                                                        <label className="mb-2 block text-xs font-medium" style={{ color: '#45524C' }}>
+                                                            Motivo
+                                                        </label>
+                                                        {!editMode ? (
+                                                            <div
+                                                                className="rounded-[4px] border px-3 py-2 text-sm"
+                                                                style={{ borderColor: LINE, backgroundColor: PAPER, color: INK }}
+                                                            >
+                                                                {motivoNome ?? '-'}
+                                                            </div>
+                                                        ) : (
+                                                            <select
+                                                                className={FIELD_INPUT_CLASS.replace('ml-4 ', '')}
+                                                                value={motivoId}
+                                                                onChange={(e) => updateAtrasoAlta(atraso, { motivo_id: e.target.value || null })}
+                                                            >
+                                                                <option value="">Selecione...</option>
+                                                                {(selectFields.motivo_id ?? []).map((opt: any) => (
+                                                                    <option key={opt.id} value={opt.id}>
+                                                                        {opt.nome}
+                                                                    </option>
+                                                                ))}
+                                                            </select>
+                                                        )}
+                                                    </div>
+
+                                                    <div>
+                                                        <label className="mb-2 block text-xs font-medium" style={{ color: '#45524C' }}>
+                                                            Sinalização ao Serviço Social
+                                                        </label>
+                                                        {!editMode ? (
+                                                            <span className="text-sm" style={{ color: INK }}>
+                                                                {atraso.data_sinalizacao_servico_social ?? '-'}
+                                                            </span>
+                                                        ) : (
+                                                            <input
+                                                                type="date"
+                                                                className={FIELD_INPUT_CLASS.replace('ml-4 ', '')}
+                                                                style={{ fontFamily: MONO_FONT }}
+                                                                value={atraso.data_sinalizacao_servico_social ?? ''}
+                                                                onChange={(e) =>
+                                                                    updateAtrasoAlta(atraso, { data_sinalizacao_servico_social: e.target.value })
+                                                                }
+                                                            />
+                                                        )}
+                                                    </div>
+
+                                                    <div>
+                                                        <label className="mb-2 block text-xs font-medium" style={{ color: '#45524C' }}>
+                                                            Pedido à Rede de Cuidados Continuados
+                                                        </label>
+                                                        {!editMode ? (
+                                                            <span className="text-sm" style={{ color: INK }}>
+                                                                {atraso.data_pedido_rede ?? '-'}
+                                                            </span>
+                                                        ) : (
+                                                            <input
+                                                                type="date"
+                                                                className={FIELD_INPUT_CLASS.replace('ml-4 ', '')}
+                                                                style={{ fontFamily: MONO_FONT }}
+                                                                value={atraso.data_pedido_rede ?? ''}
+                                                                onChange={(e) => updateAtrasoAlta(atraso, { data_pedido_rede: e.target.value })}
+                                                            />
+                                                        )}
+                                                    </div>
+
+                                                    <div>
+                                                        <label className="mb-2 block text-xs font-medium" style={{ color: '#45524C' }}>
+                                                            Observações
+                                                        </label>
+                                                        {!editMode ? (
+                                                            <span className="text-sm" style={{ color: INK }}>
+                                                                {atraso.observacoes ?? '-'}
+                                                            </span>
+                                                        ) : (
+                                                            <textarea
+                                                                value={atraso.observacoes ?? ''}
+                                                                rows={3}
+                                                                onChange={(e) => updateAtrasoAlta(atraso, { observacoes: e.target.value })}
+                                                                className="w-full rounded-[4px] border p-2 text-sm outline-none focus:ring-2 focus:ring-[#1E6F5C]/20"
+                                                                style={{ borderColor: '#C9D1CB' }}
+                                                            />
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </>
+                        )}
 
                         {tab === 'complicacoes' && (() => {
                             const isSemComplicacoes = Number(form.clavien_dindo_id) === SEM_COMPLICACOES_CLAVIEN_ID;

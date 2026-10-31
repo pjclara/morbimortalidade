@@ -7,8 +7,11 @@ use App\Models\ClavienDindo;
 use App\Models\Complicacao;
 use App\Models\ComplicacaoInternamento;
 use App\Models\Destino;
+use App\Models\DestinoDetalhe;
 use App\Models\Diagnostico;
 use App\Models\Internamento;
+use App\Models\MotivoAtraso;
+use App\Models\MotivoNaoAntecipacaoAlta;
 use App\Models\Origem;
 use App\Models\Resolucao;
 use App\Models\TipoDeCirurgia;
@@ -30,10 +33,13 @@ class InternamentoController extends Controller
             'diagnosticos',
             'origem',
             'destino',
+            'destinoDetalhe',
             'clavienDindo',
             'blocoOperatorios',
             'responsavel',
-            'complicacaoInternamentos'
+            'complicacaoInternamentos',
+            'atrasosAlta',
+            'motivoNaoAntecipacaoAlta',
         ])
             ->withCount('blocoOperatorios')
             ->addSelect([
@@ -228,18 +234,26 @@ class InternamentoController extends Controller
 
         $complicacoesList = Complicacao::orderBy('nome', 'asc')->pluck('id', 'nome');
         $resolucoesList = Resolucao::orderBy('nome', 'asc')->pluck('id', 'nome');
+        $destinoDetalheOptions = DestinoDetalhe::orderBy('nome', 'asc')->pluck('id', 'nome');
+        $motivoAtrasoOptions = MotivoAtraso::where('ativo', true)->orderBy('nome', 'asc')->pluck('id', 'nome');
+        $motivoNaoAntecipacaoAltaOptions = MotivoNaoAntecipacaoAlta::orderBy('nome', 'asc')->pluck('id', 'nome');
 
         return Inertia::render('Internamento/Index', [
             'items' => $internamentos->through(fn($i) => [
                 ...$i->toArray(),
                 'readmissao_30_dias' => (bool) $i->readmissao_30_dias,
                 'media_dias_diagnostico' => $i->media_dias_diagnostico !== null ? round((float) $i->media_dias_diagnostico, 1) : null,
+                'dias_atraso_alta' => $i->dias_atraso_alta,
+                'dias_permanencia_urgencia' => $i->dias_permanencia_urgencia,
                 'destino_options' => $destinoOptions,
                 'origem_options' => $origemOptions,
                 'responsavel_options' => $responsavelOptions,
                 'clavien_options' => $clavienOptions,
                 'complicacao_options' => $complicacoesList,
-                'resolucao_options' => $resolucoesList
+                'resolucao_options' => $resolucoesList,
+                'destino_detalhe_options' => $destinoDetalheOptions,
+                'motivo_atraso_options' => $motivoAtrasoOptions,
+                'motivo_nao_antecipacao_alta_options' => $motivoNaoAntecipacaoAltaOptions,
             ]),
 
             'filters' => $filters,
@@ -248,6 +262,9 @@ class InternamentoController extends Controller
             'origem_options' => $origemOptions,
             'responsavel_options' => $responsavelOptions,
             'clavien_options' => $clavienOptions,
+            'destino_detalhe_options' => $destinoDetalheOptions,
+            'motivo_atraso_options' => $motivoAtrasoOptions,
+            'motivo_nao_antecipacao_alta_options' => $motivoNaoAntecipacaoAltaOptions,
 
         ]);
     }
