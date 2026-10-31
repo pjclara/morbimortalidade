@@ -32,6 +32,10 @@ class Internamento extends Model
 
     protected $casts = [
         'causas_readmissao' => 'array',
+        'consulta_pos_alta_marcada' => 'boolean',
+        'contacto_telefonico_pos_alta' => 'boolean',
+        'readmissao_planeada' => 'boolean',
+        'readmissao_relacionada' => 'boolean',
     ];
 
     //

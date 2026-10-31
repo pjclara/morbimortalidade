@@ -17,6 +17,7 @@ use App\Http\Controllers\FailedImportRowController;
 use App\Http\Controllers\GrupoComplicacaoController;
 use App\Http\Controllers\GrupoDiagnosticoController;
 use App\Http\Controllers\GrupoProcedimentoController;
+use App\Http\Controllers\IndicadoresController;
 use App\Http\Controllers\InternamentoController;
 use App\Http\Controllers\JobBatchController;
 use App\Http\Controllers\LotacaoController;
@@ -57,6 +58,9 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/relatorio-cirurgia/pdf', [RelatorioCirurgiaController::class, 'pdf'])
         ->name('relatorio.cirurgia.pdf');
+
+    Route::get('/indicadores', [IndicadoresController::class, 'index'])
+        ->name('indicadores');
 
 
     Route::resource('bloco_operatorio_procedimento', BlocoOperatorioProcedimentoController::class);

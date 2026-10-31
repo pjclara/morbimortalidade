@@ -36,6 +36,12 @@ class MenuService
                 'roles' => ['super_admin', 'Interno da especialidade', 'Interno do geral'],
             ],
             [
+                'title' => 'Indicadores',
+                'href' => '/indicadores',
+                'icon' => 'BarChart3',
+                'roles' => ['super_admin', 'Interno da especialidade', 'Interno do geral'],
+            ],
+            [
                 'title' => 'Utilizadores',
                 'href' => '/users',
                 'icon' => 'Users',
