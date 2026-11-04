@@ -17,14 +17,9 @@ const TAB_LABELS: Record<string, string> = {
     diagnosticos: 'Diagnósticos',
     bloco_operatorios: 'Bloco Operatório',
     complicacoes: 'Complicações',
-    clavien: 'Clavien-Dindo',
-    destino: 'Origem / Destino',
     observacoes: 'Observações',
-    responsavel: 'Responsável',
     atraso_alta: 'Atraso após Alta',
     readmissao: 'Readmissão',
-    urgencia: 'Urgência',
-    doente_complexo: 'Doente Complexo',
 };
 
 // Em que separador vive cada campo — usado para assinalar erros do backend
@@ -40,28 +35,9 @@ const FIELD_TAB_MAP: Record<string, string> = {
     'patient.processo': 'paciente',
     'patient.data_nascimento': 'paciente',
     'patient.sexo_id': 'paciente',
-    origem_id: 'destino',
-    destino_id: 'destino',
-    destino_detalhe_id: 'destino',
-    servico_destino: 'destino',
-    data_prevista_alta: 'destino',
-    hora_alta: 'destino',
-    motivo_nao_antecipacao_alta_id: 'destino',
-    responsavel_id: 'responsavel',
-    clavien_dindo_id: 'clavien',
+    clavien_dindo_id: 'complicacoes',
     observacoes: 'observacoes',
     readmissao_planeada: 'readmissao',
-    readmissao_relacionada: 'readmissao',
-    consulta_pos_alta_marcada: 'readmissao',
-    data_consulta_pos_alta: 'readmissao',
-    contacto_telefonico_pos_alta: 'readmissao',
-    data_contacto_pos_alta: 'readmissao',
-    data_admissao_urgencia: 'urgencia',
-    episodio_urgencia: 'urgencia',
-    asa: 'doente_complexo',
-    indice_charlson: 'doente_complexo',
-    dias_cuidados_intermedios: 'doente_complexo',
-    dias_cuidados_intensivos: 'doente_complexo',
 };
 
 // Grau Clavien-Dindo usado para assinalar explicitamente "sem complicações"
@@ -169,12 +145,12 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
     const dataSaidaAtual = form.data_saida ?? item?.data_saida;
     const temAtrasoAlta = !!(dataAltaAtual && dataSaidaAtual && dataSaidaAtual > dataAltaAtual);
 
-    const tabsComuns = ['readmissao', 'urgencia', 'doente_complexo', ...(temAtrasoAlta ? ['atraso_alta'] : [])];
+    const tabsComuns = ['readmissao', ...(temAtrasoAlta ? ['atraso_alta'] : [])];
 
     const tabs =
         item?.bloco_operatorios_count > 0
-            ? [...INITIAL_TABS, 'bloco_operatorios', 'complicacoes', 'clavien', 'destino', 'observacoes', 'responsavel', ...tabsComuns]
-            : [...INITIAL_TABS, 'destino', 'observacoes', 'responsavel', ...tabsComuns];
+            ? [...INITIAL_TABS, 'bloco_operatorios', 'complicacoes', 'observacoes', ...tabsComuns]
+            : [...INITIAL_TABS, 'observacoes', ...tabsComuns];
 
     const pageProps: any = usePage().props;
 
@@ -210,27 +186,11 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
         'observacoes',
         'mortalidade_esperada',
         'bloquear',
-        'data_alta',
         'principal',
         'falecido_apos_alta',
         'causas_readmissao',
-        'destino_detalhe_id',
-        'servico_destino',
-        'data_prevista_alta',
-        'hora_alta',
-        'motivo_nao_antecipacao_alta_id',
+        'data_alta',
         'readmissao_planeada',
-        'readmissao_relacionada',
-        'consulta_pos_alta_marcada',
-        'data_consulta_pos_alta',
-        'contacto_telefonico_pos_alta',
-        'data_contacto_pos_alta',
-        'data_admissao_urgencia',
-        'episodio_urgencia',
-        'asa',
-        'indice_charlson',
-        'dias_cuidados_intermedios',
-        'dias_cuidados_intensivos',
     ];
     const booleanFields = [
         'mortalidade_esperada',
@@ -239,11 +199,8 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
         'principal',
         'falecido_apos_alta',
         'readmissao_planeada',
-        'readmissao_relacionada',
-        'consulta_pos_alta_marcada',
-        'contacto_telefonico_pos_alta',
     ];
-    const dataFields = ['data_alta', 'data_prevista_alta', 'data_consulta_pos_alta', 'data_contacto_pos_alta', 'data_admissao_urgencia'];
+    const dataFields = ['data_alta'];
     const textFields = ['observacoes'];
 
     const optionsSource: any = form || item;
@@ -252,14 +209,6 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
 
     // 🔥 Converte objetos em arrays automaticamente
     const selectFields: any = {
-        destino_id: getOptionValue('destino_options') ? Object.entries(getOptionValue('destino_options')).map(([nome, id]) => ({ id, nome })) : null,
-
-        origem_id: getOptionValue('origem_options') ? Object.entries(getOptionValue('origem_options')).map(([nome, id]) => ({ id, nome })) : null,
-
-        responsavel_id: getOptionValue('responsavel_options')
-            ? Object.entries(getOptionValue('responsavel_options')).map(([nome, id]) => ({ id, nome }))
-            : null,
-
         clavien_dindo_id: getOptionValue('clavien_options')
             ? Object.entries(getOptionValue('clavien_options')).map(([nome, id]) => ({ id, nome }))
             : null,
@@ -270,14 +219,6 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
 
         complicacao_id: getOptionValue('complicacao_options')
             ? Object.entries(getOptionValue('complicacao_options')).map(([nome, id]) => ({ id, nome }))
-            : null,
-
-        destino_detalhe_id: getOptionValue('destino_detalhe_options')
-            ? Object.entries(getOptionValue('destino_detalhe_options')).map(([nome, id]) => ({ id, nome }))
-            : null,
-
-        motivo_nao_antecipacao_alta_id: getOptionValue('motivo_nao_antecipacao_alta_options')
-            ? Object.entries(getOptionValue('motivo_nao_antecipacao_alta_options')).map(([nome, id]) => ({ id, nome }))
             : null,
 
         motivo_id: getOptionValue('motivo_atraso_options')
@@ -721,8 +662,13 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
                             <>
                                 {renderField('Processo', 'processo', item?.patient.processo)}
                                 {renderField('Entrada', 'data_entrada', item.data_entrada)}
-                                {renderField('Alta', 'data_alta', item.data_alta, 'Colocar aqui a data da alta clínica, se for o caso.')}
                                 {renderField('Saída', 'data_saida', item.data_saida)}
+                                {renderField(
+                                    'Alta',
+                                    'data_alta',
+                                    item.data_alta,
+                                    'Colocar aqui a data da alta clínica, se for o caso.',
+                                )}
                                 {renderField('Dias Internamento', 'dias_internamento', item.dias_internamento)}
                                 {renderField('Falecido', 'falecido', item.falecido)}
                                 {item.falecido ? renderField('Mortalidade Esperada', 'mortalidade_esperada', item.mortalidade_esperada) : null}
@@ -797,34 +743,6 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
                             </>
                         )}
 
-                        {tab === 'destino' && (
-                            <>
-                                {renderField('Origem', 'origem_id', item.origem?.nome)}
-                                {renderField('Destino', 'destino_id', item.destino?.nome)}
-                                {renderField('Detalhe do Destino', 'destino_detalhe_id', item.destino_detalhe?.nome)}
-                                {renderField(
-                                    'Serviço de Destino',
-                                    'servico_destino',
-                                    item.servico_destino,
-                                    'Preencher quando o destino é uma transferência interna.',
-                                )}
-                                {renderField('Data Prevista de Alta', 'data_prevista_alta', item.data_prevista_alta)}
-                                {renderField('Hora da Alta', 'hora_alta', item.hora_alta)}
-                                {renderField(
-                                    'Motivo de Não Antecipação',
-                                    'motivo_nao_antecipacao_alta_id',
-                                    item.motivo_nao_antecipacao_alta?.nome,
-                                    'Porque é que a alta não saiu mais cedo, quando a data prevista não se cumpriu.',
-                                )}
-                            </>
-                        )}
-
-                        {tab === 'responsavel' && <>{renderField('Responsável', 'responsavel_id', item.responsavel?.name)}</>}
-
-                        {tab === 'clavien' && item?.bloco_operatorios_count > 0 && (
-                            <>{renderField('Clavien-Dindo', 'clavien_dindo_id', item.clavien_dindo?.nome)}</>
-                        )}
-
                         {tab === 'bloco_operatorios' && item?.bloco_operatorios_count > 0 && (
                             <>
                                 <h3 className="text-base font-semibold" style={{ color: "#17241F" }}>Blocos Operatórios</h3>
@@ -868,43 +786,7 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
                         {tab === 'observacoes' && <>{renderField('Observações', 'observacoes', item.observacoes ?? '-')}</>}
 
                         {tab === 'readmissao' && (
-                            <>
-                                {renderField('Readmissão Planeada', 'readmissao_planeada', form.readmissao_planeada ?? item.readmissao_planeada)}
-                                {renderField(
-                                    'Readmissão Relacionada',
-                                    'readmissao_relacionada',
-                                    form.readmissao_relacionada ?? item.readmissao_relacionada,
-                                )}
-                                {renderField(
-                                    'Consulta Pós-Alta Marcada',
-                                    'consulta_pos_alta_marcada',
-                                    form.consulta_pos_alta_marcada ?? item.consulta_pos_alta_marcada,
-                                )}
-                                {renderField('Data da Consulta Pós-Alta', 'data_consulta_pos_alta', item.data_consulta_pos_alta)}
-                                {renderField(
-                                    'Contacto Telefónico Pós-Alta',
-                                    'contacto_telefonico_pos_alta',
-                                    form.contacto_telefonico_pos_alta ?? item.contacto_telefonico_pos_alta,
-                                )}
-                                {renderField('Data do Contacto Pós-Alta', 'data_contacto_pos_alta', item.data_contacto_pos_alta)}
-                            </>
-                        )}
-
-                        {tab === 'urgencia' && (
-                            <>
-                                {renderField('Admissão na Urgência', 'data_admissao_urgencia', item.data_admissao_urgencia)}
-                                {renderField('Episódio da Urgência', 'episodio_urgencia', item.episodio_urgencia)}
-                                {renderField('Dias de Permanência na Urgência', 'dias_permanencia_urgencia', item.dias_permanencia_urgencia)}
-                            </>
-                        )}
-
-                        {tab === 'doente_complexo' && (
-                            <>
-                                {renderField('ASA', 'asa', item.asa, 'Classificação ASA (1 a 5).')}
-                                {renderField('Índice de Charlson', 'indice_charlson', item.indice_charlson)}
-                                {renderField('Dias em Cuidados Intermédios', 'dias_cuidados_intermedios', item.dias_cuidados_intermedios)}
-                                {renderField('Dias em Cuidados Intensivos', 'dias_cuidados_intensivos', item.dias_cuidados_intensivos)}
-                            </>
+                            <>{renderField('Readmissão Planeada', 'readmissao_planeada', form.readmissao_planeada ?? item.readmissao_planeada)}</>
                         )}
 
                         {tab === 'atraso_alta' && (

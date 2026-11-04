@@ -28,7 +28,7 @@ class Internamento extends Model
         'outra',
     ];
 
-    protected $fillable = ['asa', 'bloquear', 'causas_readmissao', 'clavien_dindo_id', 'consulta_pos_alta_marcada', 'contacto_telefonico_pos_alta', 'data_admissao_urgencia', 'data_alta', 'data_consulta_pos_alta', 'data_contacto_pos_alta', 'data_entrada', 'data_prevista_alta', 'data_saida', 'destino_detalhe_id', 'destino_id', 'dias_cuidados_intensivos', 'dias_cuidados_intermedios', 'dias_internamento', 'episodio', 'episodio_urgencia', 'equipa_id', 'falecido', 'falecido_apos_alta', 'hora_alta', 'indice_charlson', 'mortalidade_esperada', 'motivo_nao_antecipacao_alta_id', 'observacoes', 'origem_id', 'patient_id', 'readmissao_planeada', 'readmissao_relacionada', 'responsavel_id', 'servico_destino'];
+    protected $fillable = ['asa', 'bloquear', 'causas_readmissao', 'clavien_dindo_id', 'consulta_pos_alta_marcada', 'contacto_telefonico_pos_alta', 'data_alta', 'data_consulta_pos_alta', 'data_contacto_pos_alta', 'data_entrada', 'data_prevista_alta', 'data_saida', 'demora_permanencia_urgencia', 'destino_detalhe_id', 'destino_id', 'dias_cuidados_intensivos', 'dias_cuidados_intermedios', 'dias_internamento', 'episodio', 'equipa_id', 'falecido', 'falecido_apos_alta', 'hora_alta', 'indice_charlson', 'mortalidade_esperada', 'motivo_nao_antecipacao_alta_id', 'observacoes', 'origem_id', 'patient_id', 'readmissao_planeada', 'readmissao_relacionada', 'responsavel_id', 'servico_destino'];
 
     protected $casts = [
         'causas_readmissao' => 'array',
@@ -157,24 +157,6 @@ class Internamento extends Model
             ->filter(fn (self $i) => Carbon::parse($i->data_saida)->diffInDays(Carbon::parse($this->data_entrada)) < 30)
             ->sortByDesc('data_saida')
             ->first();
-    }
-
-    /**
-     * Equivalente à coluna "Demora Permanece Urg" do SONHO, calculada em vez
-     * de guardada: dias entre a admissão na urgência e a entrada no
-     * internamento (`data_entrada`).
-     */
-    protected function diasPermanenciaUrgencia(): Attribute
-    {
-        return Attribute::make(
-            get: function () {
-                if (!$this->data_admissao_urgencia || !$this->data_entrada) {
-                    return null;
-                }
-
-                return (int) Carbon::parse($this->data_admissao_urgencia)->diffInDays(Carbon::parse($this->data_entrada), false);
-            },
-        );
     }
 
     /**
