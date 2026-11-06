@@ -20,6 +20,7 @@ const TAB_LABELS: Record<string, string> = {
     observacoes: 'Observações',
     atraso_alta: 'Atraso após Alta',
     readmissao: 'Readmissão',
+    destino: 'Origem / Destino',
 };
 
 // Em que separador vive cada campo — usado para assinalar erros do backend
@@ -38,6 +39,13 @@ const FIELD_TAB_MAP: Record<string, string> = {
     clavien_dindo_id: 'complicacoes',
     observacoes: 'observacoes',
     readmissao_planeada: 'readmissao',
+    origem_id: 'destino',
+    destino_id: 'destino',
+    destino_detalhe_id: 'destino',
+    servico_destino: 'destino',
+    data_prevista_alta: 'destino',
+    hora_alta: 'destino',
+    motivo_nao_antecipacao_alta_id: 'destino',
 };
 
 // Grau Clavien-Dindo usado para assinalar explicitamente "sem complicações"
@@ -149,8 +157,8 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
 
     const tabs =
         item?.bloco_operatorios_count > 0
-            ? [...INITIAL_TABS, 'bloco_operatorios', 'complicacoes', 'observacoes', ...tabsComuns]
-            : [...INITIAL_TABS, 'observacoes', ...tabsComuns];
+            ? [...INITIAL_TABS, 'bloco_operatorios', 'complicacoes', 'destino', 'observacoes', ...tabsComuns]
+            : [...INITIAL_TABS, 'destino', 'observacoes', ...tabsComuns];
 
     const pageProps: any = usePage().props;
 
@@ -191,6 +199,11 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
         'causas_readmissao',
         'data_alta',
         'readmissao_planeada',
+        'destino_detalhe_id',
+        'servico_destino',
+        'data_prevista_alta',
+        'hora_alta',
+        'motivo_nao_antecipacao_alta_id',
     ];
     const booleanFields = [
         'mortalidade_esperada',
@@ -200,7 +213,7 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
         'falecido_apos_alta',
         'readmissao_planeada',
     ];
-    const dataFields = ['data_alta'];
+    const dataFields = ['data_alta', 'data_prevista_alta'];
     const textFields = ['observacoes'];
 
     const optionsSource: any = form || item;
@@ -223,6 +236,14 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
 
         motivo_id: getOptionValue('motivo_atraso_options')
             ? Object.entries(getOptionValue('motivo_atraso_options')).map(([nome, id]) => ({ id, nome }))
+            : null,
+
+        destino_detalhe_id: getOptionValue('destino_detalhe_options')
+            ? Object.entries(getOptionValue('destino_detalhe_options')).map(([nome, id]) => ({ id, nome }))
+            : null,
+
+        motivo_nao_antecipacao_alta_id: getOptionValue('motivo_nao_antecipacao_alta_options')
+            ? Object.entries(getOptionValue('motivo_nao_antecipacao_alta_options')).map(([nome, id]) => ({ id, nome }))
             : null,
     };
 
@@ -290,7 +311,17 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
     // (id 10) e é mutuamente exclusivo com ter complicações registadas:
     // marcar a flag com complicações já lançadas exige confirmação para as
     // descartar, em vez de ficar num estado ambíguo até se guardar.
+    // Um internamento com bloco operatório cujo destino é "Falecido" é,
+    // por definição da classificação Clavien-Dindo, Grau V — o backend
+    // força sempre esse grau (ver InternamentoController::update), por isso
+    // "Sem complicações" nem é uma opção válida aqui.
+    const obitoCirurgico = !!(item?.falecido && item?.bloco_operatorios_count > 0);
+
     function toggleSemComplicacoes(checked: boolean) {
+        if (checked && obitoCirurgico) {
+            return;
+        }
+
         if (checked && complicacaoInternamentos.length > 0) {
             const discard = window.confirm(
                 'Este internamento já tem complicações registadas. Marcar "Sem complicações" vai removê-las. Continuar?',
@@ -735,6 +766,28 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
                             </>
                         )}
 
+                        {tab === 'destino' && (
+                            <>
+                                {renderField('Origem', 'origem_id', item.origem?.nome)}
+                                {renderField('Destino', 'destino_id', item.destino?.nome)}
+                                {renderField('Detalhe do Destino', 'destino_detalhe_id', item.destino_detalhe?.nome)}
+                                {renderField(
+                                    'Serviço de Destino',
+                                    'servico_destino',
+                                    item.servico_destino,
+                                    'Preencher quando o destino é uma transferência interna.',
+                                )}
+                                {renderField('Data Prevista de Alta', 'data_prevista_alta', item.data_prevista_alta)}
+                                {renderField('Hora da Alta', 'hora_alta', item.hora_alta)}
+                                {renderField(
+                                    'Motivo de Não Antecipação',
+                                    'motivo_nao_antecipacao_alta_id',
+                                    item.motivo_nao_antecipacao_alta?.nome,
+                                    'Porque é que a alta não saiu mais cedo, quando a data prevista não se cumpriu.',
+                                )}
+                            </>
+                        )}
+
                         {tab === 'paciente' && (
                             <>
                                 {renderField('Processo', 'patient.processo', item.patient?.processo)}
@@ -958,23 +1011,30 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
                                 <label
                                     className={cn(
                                         'flex items-center gap-2 rounded-[6px] border px-4 py-2.5 text-sm',
-                                        !editMode && 'cursor-default',
+                                        (!editMode || obitoCirurgico) && 'cursor-default',
                                     )}
                                     style={{
                                         borderColor: isSemComplicacoes ? CLINICAL : LINE,
                                         backgroundColor: isSemComplicacoes ? CLINICAL_SOFT : PAPER,
                                         color: isSemComplicacoes ? CLINICAL : INK,
+                                        opacity: obitoCirurgico ? 0.6 : 1,
                                     }}
                                 >
                                     <input
                                         type="checkbox"
                                         className="h-4 w-4 accent-[#1E6F5C] disabled:cursor-not-allowed"
                                         checked={isSemComplicacoes}
-                                        disabled={!editMode}
+                                        disabled={!editMode || obitoCirurgico}
                                         onChange={(e) => toggleSemComplicacoes(e.target.checked)}
                                     />
                                     Sem complicações — confirmo que este doente foi revisto e não teve complicações.
                                 </label>
+                                {obitoCirurgico && (
+                                    <p className="text-sm" style={{ color: '#5B685F' }}>
+                                        Internamento com bloco operatório e destino Falecido: o Clavien-Dindo é sempre Grau V (óbito),
+                                        não é possível marcar "Sem complicações".
+                                    </p>
+                                )}
 
                                 {!isSemComplicacoes && (
                                 <div className="space-y-4">

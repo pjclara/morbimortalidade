@@ -13,6 +13,11 @@ class ClavienDindo extends Model
     // internamento com bloco operatório, sem exigir complicações registadas.
     const SEM_COMPLICACOES_ID = 10;
 
+    // Grau V: óbito. Um internamento com bloco operatório cujo destino é
+    // "Falecido" é, por definição da classificação Clavien-Dindo, Grau V —
+    // nunca "sem complicações" (ver Internamento::falecido).
+    const GRAU_V_ID = 9;
+
     protected $fillable = ['descricao', 'nome'];
 
     //

@@ -468,6 +468,14 @@ class InternamentoController extends Controller
                 $maxClavien = ClavienDindo::SEM_COMPLICACOES_ID;
             }
 
+            // Um internamento com bloco operatório cujo destino é "Falecido"
+            // é, por definição da classificação Clavien-Dindo, Grau V —
+            // substitui qualquer outro grau calculado ou pedido (incluindo
+            // "Sem complicações", que não faz sentido para um óbito).
+            if ($internamento->falecido && $internamento->blocoOperatorios()->exists()) {
+                $maxClavien = ClavienDindo::GRAU_V_ID;
+            }
+
             $internamento->update([
                 'clavien_dindo_id' => $maxClavien,
             ]);
