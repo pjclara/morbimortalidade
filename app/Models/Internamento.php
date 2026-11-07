@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Services\CharlsonCalculatorService;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -167,17 +166,6 @@ class Internamento extends Model
      * na UI (mostrar/escolher secção de atraso) como nos indicadores do
      * serviço, e não faz sentido duplicar o cálculo nos dois sítios.
      */
-    /**
-     * Índice de Charlson calculado a partir das comorbilidades (diagnósticos
-     * secundários) e da idade — só para internamentos com complicações
-     * registadas (ver CharlsonCalculatorService). Para os restantes, usa-se
-     * o valor manual em `indice_charlson`.
-     */
-    public function charlsonCalculado(): ?int
-    {
-        return app(CharlsonCalculatorService::class)->calcular($this);
-    }
-
     protected function diasAtrasoAlta(): Attribute
     {
         return Attribute::make(

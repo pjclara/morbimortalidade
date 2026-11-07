@@ -18,7 +18,6 @@ use App\Models\TipoDeCirurgia;
 use App\Models\User;
 use App\Http\Requests\UpdateInternamentoRequest;
 use App\Services\BlocoOperatorioImportService;
-use App\Services\CharlsonCalculatorService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -39,7 +38,6 @@ class InternamentoController extends Controller
             'blocoOperatorios',
             'responsavel',
             'complicacaoInternamentos',
-            'diagnosticoInternamentos.diagnostico',
             'atrasosAlta',
             'motivoNaoAntecipacaoAlta',
         ])
@@ -239,7 +237,6 @@ class InternamentoController extends Controller
         $destinoDetalheOptions = DestinoDetalhe::orderBy('nome', 'asc')->pluck('id', 'nome');
         $motivoAtrasoOptions = MotivoAtraso::where('ativo', true)->orderBy('nome', 'asc')->pluck('id', 'nome');
         $motivoNaoAntecipacaoAltaOptions = MotivoNaoAntecipacaoAlta::orderBy('nome', 'asc')->pluck('id', 'nome');
-        $charlsonCategoriaOptions = CharlsonCalculatorService::opcoes();
 
         return Inertia::render('Internamento/Index', [
             'items' => $internamentos->through(fn($i) => [
@@ -247,7 +244,6 @@ class InternamentoController extends Controller
                 'readmissao_30_dias' => (bool) $i->readmissao_30_dias,
                 'media_dias_diagnostico' => $i->media_dias_diagnostico !== null ? round((float) $i->media_dias_diagnostico, 1) : null,
                 'dias_atraso_alta' => $i->dias_atraso_alta,
-                'charlson_calculado' => $i->charlsonCalculado(),
                 'destino_options' => $destinoOptions,
                 'origem_options' => $origemOptions,
                 'responsavel_options' => $responsavelOptions,
@@ -257,7 +253,6 @@ class InternamentoController extends Controller
                 'destino_detalhe_options' => $destinoDetalheOptions,
                 'motivo_atraso_options' => $motivoAtrasoOptions,
                 'motivo_nao_antecipacao_alta_options' => $motivoNaoAntecipacaoAltaOptions,
-                'charlson_categoria_options' => $charlsonCategoriaOptions,
             ]),
 
             'filters' => $filters,
@@ -363,74 +358,13 @@ class InternamentoController extends Controller
         $atrasosAltaData = $validatedData['atrasos_alta'] ?? [];
         unset($validatedData['atrasos_alta']);
 
-        $comorbilidadesData = $validatedData['comorbilidades'] ?? [];
-        unset($validatedData['comorbilidades']);
-
         // Guardado à parte porque, sem complicações, o Clavien-Dindo é
         // sempre recalculado a seguir — só sobrevive se for explicitamente
         // o grau "Sem complicações" escolhido no separador Complicações.
         $requestedClavienDindoId = $validatedData['clavien_dindo_id'] ?? null;
 
-        DB::transaction(function () use ($internamento, $validatedData, $complicacaoInternamentosData, $atrasosAltaData, $comorbilidadesData, $requestedClavienDindoId) {
+        DB::transaction(function () use ($internamento, $validatedData, $complicacaoInternamentosData, $atrasosAltaData, $requestedClavienDindoId) {
             $internamento->update($validatedData);
-
-            // ---------------------------------------------------------
-            // Sincronizar comorbilidades (diagnostico_internamento com
-            // principal=false) — usadas pelo CharlsonCalculatorService.
-            // A maioria dos internamentos não traz comorbilidades do SONHO
-            // (só vêm as que o próprio episódio de internamento trouxer
-            // codificadas), por isso este é o único sítio onde o utilizador
-            // as pode adicionar manualmente ao rever um caso com complicações.
-            // Mesmo padrão de "full replace" de complicacao_internamentos
-            // abaixo: o frontend envia sempre a lista completa atual.
-            // ---------------------------------------------------------
-            $incomingComorbilidadeIds = [];
-
-            foreach ($comorbilidadesData as $comorbilidadeData) {
-                $codigo = trim($comorbilidadeData['codigo'] ?? '');
-
-                if ($codigo === '') {
-                    continue;
-                }
-
-                // "nome", "codigo_pai" e "descricao" são NOT NULL sem default
-                // na BD (ver InternamentoImportService, mesma convenção: sem
-                // código pai próprio, fica vazio).
-                $nomeComorbilidade = $comorbilidadeData['descricao'] ?? $codigo;
-
-                $diagnostico = Diagnostico::firstOrCreate(
-                    ['codigo' => $codigo],
-                    [
-                        'codigo_pai' => '',
-                        'nome' => $nomeComorbilidade,
-                        'descricao' => $nomeComorbilidade,
-                    ]
-                );
-
-                $existente = !empty($comorbilidadeData['id'])
-                    ? $internamento->diagnosticoInternamentos()->where('id', $comorbilidadeData['id'])->where('principal', false)->first()
-                    : null;
-
-                if ($existente) {
-                    $existente->update([
-                        'diagnostico_id' => $diagnostico->id,
-                        'descricao' => $comorbilidadeData['descricao'] ?? $codigo,
-                    ]);
-                    $incomingComorbilidadeIds[] = $existente->id;
-                } else {
-                    $novaComorbilidade = $internamento->diagnosticoInternamentos()->create([
-                        'diagnostico_id' => $diagnostico->id,
-                        'principal' => false,
-                        'descricao' => $comorbilidadeData['descricao'] ?? $codigo,
-                    ]);
-                    $incomingComorbilidadeIds[] = $novaComorbilidade->id;
-                }
-            }
-
-            $internamento->diagnosticoInternamentos()
-                ->where('principal', false)
-                ->whereNotIn('id', $incomingComorbilidadeIds)
-                ->delete();
 
             // ---------------------------------------------------------
             // Sincronizar atrasos de alta (array repetível, igual ao

@@ -2,33 +2,16 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Icd10CM;
 use Illuminate\Http\Request;
 
 class DiagnosticoController extends Controller
 {
     /**
-     * Pesquisa ICD-10-CM por código ou descrição (`?q=`), usada pelo
-     * seletor de comorbilidades no separador "Complicações" do internamento
-     * — a tabela `icd10_cm` tem ~99 mil linhas, por isso é sempre pesquisa
-     * no servidor, nunca uma lista pré-carregada no frontend.
+     * Display a listing of the resource.
      */
-    public function index(Request $request)
+    public function index()
     {
-        $q = trim((string) $request->query('q', ''));
-
-        if (mb_strlen($q) < 2) {
-            return response()->json([]);
-        }
-
-        $resultados = Icd10CM::query()
-            ->where('valid', true)
-            ->where(fn ($query) => $query->where('code', 'like', "{$q}%")->orWhere('description', 'like', "%{$q}%"))
-            ->orderByRaw('code like ? desc', ["{$q}%"])
-            ->limit(20)
-            ->get(['code', 'description']);
-
-        return response()->json($resultados);
+        //
     }
 
     /**

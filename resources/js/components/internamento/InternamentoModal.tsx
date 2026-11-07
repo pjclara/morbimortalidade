@@ -51,7 +51,6 @@ const SEM_COMPLICACOES_CLAVIEN_ID = 10;
 
 function tabForErrorKey(key: string): string | undefined {
     if (key.startsWith('complicacao_internamentos')) return 'complicacoes';
-    if (key.startsWith('comorbilidades')) return 'complicacoes';
     if (key.startsWith('atrasos_alta')) return 'atraso_alta';
     return FIELD_TAB_MAP[key];
 }
@@ -104,7 +103,6 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
     const [searchResolucao, setSearchResolucao] = useState('');
 
     const [openComplicacao, setOpenComplicacao] = useState<number | null>(null);
-    const [openComorbilidadeMenu, setOpenComorbilidadeMenu] = useState(false);
     const [openResolucaoModal, setOpenResolucaoModal] = useState(false);
     const [currentResolucaoCi, setCurrentResolucaoCi] = useState<any>(null);
     const [currentResolucaoSelection, setCurrentResolucaoSelection] = useState<number[]>([]);
@@ -264,50 +262,6 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
         );
     }
 
-    // Comorbilidades = diagnosticos secundários (principal=false) do
-    // internamento, normalizados para {id, codigo, descricao} — a fonte
-    // tanto pode ser o que o SONHO trouxe (`diagnostico_internamento`,
-    // relação aninhada `diagnostico`) como os que o utilizador adicionar
-    // aqui (já nesta forma normalizada). Usadas pelo CharlsonCalculatorService.
-    const comorbilidades: any[] =
-        form.comorbilidades ??
-        (form.diagnosticoInternamentos ?? form.diagnostico_internamento ?? item?.diagnosticoInternamentos ?? item?.diagnostico_internamento ?? [])
-            .filter((d: any) => !Number(d.principal))
-            .map((d: any) => ({ id: d.id, codigo: d.diagnostico?.codigo ?? d.codigo, descricao: d.descricao ?? d.diagnostico?.nome }));
-
-    function setComorbilidades(updated: any[]) {
-        setForm({
-            ...form,
-            comorbilidades: updated,
-        });
-        setIsDirty(true);
-    }
-
-    function getComorbilidadeKey(c: any) {
-        return c.id ?? c._tempId;
-    }
-
-    // Em vez de obrigar a pesquisar o código ICD-10 (demasiado complexo para
-    // o fluxo de revisão de um caso de M&M), o utilizador escolhe a
-    // categoria do Charlson diretamente de uma checklist fixa (17 opções —
-    // ver CharlsonCalculatorService::opcoes() no backend). Guardado com
-    // código "CHARLSON:<categoria>", reconhecido diretamente pelo serviço
-    // sem precisar de mapeamento ICD-10.
-    function toggleComorbilidadeCategoria(categoria: { key: string; label: string }) {
-        const codigo = `CHARLSON:${categoria.key}`;
-        const existente = comorbilidades.find((c: any) => c.codigo === codigo);
-
-        if (existente) {
-            setComorbilidades(comorbilidades.filter((c: any) => c.codigo !== codigo));
-        } else {
-            setComorbilidades([...comorbilidades, { _tempId: Date.now(), codigo, descricao: categoria.label }]);
-        }
-    }
-
-    function removeComorbilidade(c: any) {
-        setComorbilidades(comorbilidades.filter((item: any) => getComorbilidadeKey(item) !== getComorbilidadeKey(c)));
-    }
-
     const atrasosAlta = form.atrasosAlta ?? form.atrasos_alta ?? item?.atrasosAlta ?? item?.atrasos_alta ?? [];
 
     function setAtrasosAlta(updated: any[]) {
@@ -419,11 +373,6 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
                 data_sinalizacao_servico_social: a.data_sinalizacao_servico_social,
                 data_pedido_rede: a.data_pedido_rede,
                 observacoes: a.observacoes,
-            })),
-            comorbilidades: comorbilidades.map((c: any) => ({
-                id: c.id,
-                codigo: c.codigo,
-                descricao: c.descricao,
             })),
         };
 
@@ -1064,136 +1013,47 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
                                 )}
 
                                 {!isSemComplicacoes && (() => {
-                                    const charlsonCalculado = item?.charlson_calculado;
                                     const charlsonAtual = form.indice_charlson ?? item?.indice_charlson;
+                                    // Fórmula padrão (Charlson et al.): sobrevivência estimada a 10
+                                    // anos = 0.983 ^ e^(0.9 × score). Só calculável com um score válido.
+                                    const sobrevivencia =
+                                        charlsonAtual !== null && charlsonAtual !== undefined && charlsonAtual !== ''
+                                            ? Math.round(Math.pow(0.983, Math.exp(Number(charlsonAtual) * 0.9)) * 100)
+                                            : null;
 
                                     return (
-                                        <div className="rounded-[6px] border px-4 py-3" style={{ borderColor: LINE, backgroundColor: PAPER }}>
-                                            <div className="flex flex-wrap items-center justify-between gap-2">
-                                                <span className="text-xs font-medium" style={{ color: '#45524C' }}>
-                                                    Índice de Charlson
+                                        <div className="flex flex-wrap gap-6 rounded-[6px] border px-4 py-3" style={{ borderColor: LINE, backgroundColor: PAPER }}>
+                                            <div>
+                                                <span className="block text-xs font-medium" style={{ color: '#45524C' }}>
+                                                    Charlson Comorbidity Index
                                                 </span>
 
                                                 {editMode ? (
                                                     <input
                                                         type="number"
                                                         min={0}
-                                                        className={FIELD_INPUT_CLASS.replace('ml-4 ', 'w-24 ')}
+                                                        className={FIELD_INPUT_CLASS.replace('ml-4 ', 'mt-1 w-24 ')}
                                                         value={form.indice_charlson ?? ''}
                                                         onChange={(e) => handleChange('indice_charlson', e.target.value === '' ? null : Number(e.target.value))}
                                                     />
                                                 ) : (
-                                                    <span className="text-sm" style={{ color: INK }}>{charlsonAtual ?? '-'}</span>
+                                                    <span className="mt-1 block text-2xl font-semibold" style={{ color: INK }}>
+                                                        {charlsonAtual ?? '-'}
+                                                    </span>
+                                                )}
+
+                                                {backendErrors?.indice_charlson && (
+                                                    <span className="mt-1 block text-sm text-red-600">{backendErrors.indice_charlson}</span>
                                                 )}
                                             </div>
 
-                                            {charlsonCalculado !== null && charlsonCalculado !== undefined && (
-                                                <p className="mt-1 text-xs" style={{ color: '#5B685F' }}>
-                                                    Sugestão calculada a partir das comorbilidades e idade: <strong>{charlsonCalculado}</strong>
-                                                    {editMode && Number(charlsonAtual) !== charlsonCalculado && (
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => handleChange('indice_charlson', charlsonCalculado)}
-                                                            className="ml-2 underline"
-                                                            style={{ color: CLINICAL }}
-                                                        >
-                                                            usar sugestão
-                                                        </button>
-                                                    )}
-                                                </p>
-                                            )}
-
-                                            {backendErrors?.indice_charlson && (
-                                                <span className="mt-1 block text-sm text-red-600">{backendErrors.indice_charlson}</span>
-                                            )}
-
-                                            <div className="mt-3 border-t pt-3" style={{ borderColor: LINE }}>
-                                                <div className="flex flex-wrap items-center justify-between gap-2">
-                                                    <span className="text-xs font-medium" style={{ color: '#45524C' }}>
-                                                        Comorbilidades consideradas ({comorbilidades.length})
-                                                    </span>
-
-                                                    {editMode && (
-                                                        <Popover open={openComorbilidadeMenu} onOpenChange={setOpenComorbilidadeMenu}>
-                                                            <PopoverTrigger asChild>
-                                                                <button
-                                                                    type="button"
-                                                                    className="rounded-[4px] border px-2.5 py-1 text-xs font-medium transition hover:bg-[#E3EFEA]"
-                                                                    style={{ borderColor: CLINICAL, color: CLINICAL }}
-                                                                >
-                                                                    Adicionar comorbilidade
-                                                                </button>
-                                                            </PopoverTrigger>
-
-                                                            <PopoverContent className="w-80 p-0">
-                                                                <div className="max-h-80 space-y-0.5 overflow-auto rounded-b-md border border-slate-200 bg-white p-2 shadow-sm">
-                                                                    {(getOptionValue('charlson_categoria_options') ?? []).map((opt: any) => {
-                                                                        const codigo = `CHARLSON:${opt.key}`;
-                                                                        const selecionada = comorbilidades.some((c: any) => c.codigo === codigo);
-
-                                                                        return (
-                                                                            <label
-                                                                                key={opt.key}
-                                                                                className={cn(
-                                                                                    'flex cursor-pointer items-center justify-between gap-2 rounded-md px-3 py-2 text-sm transition',
-                                                                                    selecionada ? 'bg-blue-50 text-blue-700' : 'hover:bg-slate-100',
-                                                                                )}
-                                                                            >
-                                                                                <span className="flex items-center gap-2">
-                                                                                    <input
-                                                                                        type="checkbox"
-                                                                                        className="h-4 w-4 accent-[#1E6F5C]"
-                                                                                        checked={selecionada}
-                                                                                        onChange={() => toggleComorbilidadeCategoria(opt)}
-                                                                                    />
-                                                                                    {opt.label}
-                                                                                </span>
-                                                                                <span className="text-xs text-slate-400">peso {opt.peso}</span>
-                                                                            </label>
-                                                                        );
-                                                                    })}
-                                                                </div>
-                                                            </PopoverContent>
-                                                        </Popover>
-                                                    )}
-                                                </div>
-
-                                                {comorbilidades.length === 0 ? (
-                                                    <p className="mt-1 text-xs" style={{ color: '#5B685F' }}>
-                                                        Nenhuma comorbilidade registada — a sugestão acima não reflete comorbilidades
-                                                        reais, só a idade.
-                                                    </p>
-                                                ) : (
-                                                    <ul className="mt-1 space-y-1">
-                                                        {comorbilidades.map((c: any) => (
-                                                            <li
-                                                                key={getComorbilidadeKey(c)}
-                                                                className="flex items-center justify-between gap-2 text-sm"
-                                                                style={{ color: INK }}
-                                                            >
-                                                                <span>
-                                                                    {c.codigo?.startsWith('CHARLSON:') ? (
-                                                                        c.descricao ?? '-'
-                                                                    ) : (
-                                                                        <>
-                                                                            <span style={{ fontFamily: MONO_FONT }}>{c.codigo}</span> — {c.descricao ?? '-'}
-                                                                        </>
-                                                                    )}
-                                                                </span>
-                                                                {editMode && (
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={() => removeComorbilidade(c)}
-                                                                        className="rounded-[4px] p-1 transition hover:bg-[#FBE7E4]"
-                                                                        style={{ color: ROSE }}
-                                                                    >
-                                                                        <Trash2 className="h-3.5 w-3.5" />
-                                                                    </button>
-                                                                )}
-                                                            </li>
-                                                        ))}
-                                                    </ul>
-                                                )}
+                                            <div>
+                                                <span className="block text-xs font-medium" style={{ color: '#45524C' }}>
+                                                    Estimated 10-year survival
+                                                </span>
+                                                <span className="mt-1 block text-2xl font-semibold" style={{ color: INK }}>
+                                                    {sobrevivencia !== null ? `${sobrevivencia}%` : '-'}
+                                                </span>
                                             </div>
                                         </div>
                                     );
