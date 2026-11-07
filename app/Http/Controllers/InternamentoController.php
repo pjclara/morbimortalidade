@@ -393,9 +393,18 @@ class InternamentoController extends Controller
                     continue;
                 }
 
+                // "nome", "codigo_pai" e "descricao" são NOT NULL sem default
+                // na BD (ver InternamentoImportService, mesma convenção: sem
+                // código pai próprio, fica vazio).
+                $nomeComorbilidade = $comorbilidadeData['descricao'] ?? $codigo;
+
                 $diagnostico = Diagnostico::firstOrCreate(
                     ['codigo' => $codigo],
-                    ['nome' => $comorbilidadeData['descricao'] ?? $codigo]
+                    [
+                        'codigo_pai' => '',
+                        'nome' => $nomeComorbilidade,
+                        'descricao' => $nomeComorbilidade,
+                    ]
                 );
 
                 $existente = !empty($comorbilidadeData['id'])
