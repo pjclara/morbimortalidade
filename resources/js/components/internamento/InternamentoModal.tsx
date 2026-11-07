@@ -37,6 +37,7 @@ const FIELD_TAB_MAP: Record<string, string> = {
     'patient.data_nascimento': 'paciente',
     'patient.sexo_id': 'paciente',
     clavien_dindo_id: 'complicacoes',
+    indice_charlson: 'complicacoes',
     observacoes: 'observacoes',
     readmissao_planeada: 'readmissao',
     origem_id: 'destino',
@@ -1010,6 +1011,53 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
                                         não é possível marcar "Sem complicações".
                                     </p>
                                 )}
+
+                                {!isSemComplicacoes && (() => {
+                                    const charlsonCalculado = item?.charlson_calculado;
+                                    const charlsonAtual = form.indice_charlson ?? item?.indice_charlson;
+
+                                    return (
+                                        <div className="rounded-[6px] border px-4 py-3" style={{ borderColor: LINE, backgroundColor: PAPER }}>
+                                            <div className="flex flex-wrap items-center justify-between gap-2">
+                                                <span className="text-xs font-medium" style={{ color: '#45524C' }}>
+                                                    Índice de Charlson
+                                                </span>
+
+                                                {editMode ? (
+                                                    <input
+                                                        type="number"
+                                                        min={0}
+                                                        className={FIELD_INPUT_CLASS.replace('ml-4 ', 'w-24 ')}
+                                                        value={form.indice_charlson ?? ''}
+                                                        onChange={(e) => handleChange('indice_charlson', e.target.value === '' ? null : Number(e.target.value))}
+                                                    />
+                                                ) : (
+                                                    <span className="text-sm" style={{ color: INK }}>{charlsonAtual ?? '-'}</span>
+                                                )}
+                                            </div>
+
+                                            {charlsonCalculado !== null && charlsonCalculado !== undefined && (
+                                                <p className="mt-1 text-xs" style={{ color: '#5B685F' }}>
+                                                    Sugestão calculada a partir das comorbilidades e idade: <strong>{charlsonCalculado}</strong>
+                                                    {editMode && Number(charlsonAtual) !== charlsonCalculado && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleChange('indice_charlson', charlsonCalculado)}
+                                                            className="ml-2 underline"
+                                                            style={{ color: CLINICAL }}
+                                                        >
+                                                            usar sugestão
+                                                        </button>
+                                                    )}
+                                                </p>
+                                            )}
+
+                                            {backendErrors?.indice_charlson && (
+                                                <span className="mt-1 block text-sm text-red-600">{backendErrors.indice_charlson}</span>
+                                            )}
+                                        </div>
+                                    );
+                                })()}
 
                                 {!isSemComplicacoes && (
                                 <div className="space-y-4">

@@ -38,6 +38,7 @@ class InternamentoController extends Controller
             'blocoOperatorios',
             'responsavel',
             'complicacaoInternamentos',
+            'diagnosticoInternamentos.diagnostico',
             'atrasosAlta',
             'motivoNaoAntecipacaoAlta',
         ])
@@ -244,6 +245,7 @@ class InternamentoController extends Controller
                 'readmissao_30_dias' => (bool) $i->readmissao_30_dias,
                 'media_dias_diagnostico' => $i->media_dias_diagnostico !== null ? round((float) $i->media_dias_diagnostico, 1) : null,
                 'dias_atraso_alta' => $i->dias_atraso_alta,
+                'charlson_calculado' => $i->charlsonCalculado(),
                 'destino_options' => $destinoOptions,
                 'origem_options' => $origemOptions,
                 'responsavel_options' => $responsavelOptions,
