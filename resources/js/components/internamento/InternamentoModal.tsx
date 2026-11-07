@@ -41,11 +41,7 @@ const FIELD_TAB_MAP: Record<string, string> = {
     readmissao_planeada: 'readmissao',
     origem_id: 'destino',
     destino_id: 'destino',
-    destino_detalhe_id: 'destino',
     servico_destino: 'destino',
-    data_prevista_alta: 'destino',
-    hora_alta: 'destino',
-    motivo_nao_antecipacao_alta_id: 'destino',
 };
 
 // Grau Clavien-Dindo usado para assinalar explicitamente "sem complicações"
@@ -199,11 +195,7 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
         'causas_readmissao',
         'data_alta',
         'readmissao_planeada',
-        'destino_detalhe_id',
         'servico_destino',
-        'data_prevista_alta',
-        'hora_alta',
-        'motivo_nao_antecipacao_alta_id',
     ];
     const booleanFields = [
         'mortalidade_esperada',
@@ -213,7 +205,7 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
         'falecido_apos_alta',
         'readmissao_planeada',
     ];
-    const dataFields = ['data_alta', 'data_prevista_alta'];
+    const dataFields = ['data_alta'];
     const textFields = ['observacoes'];
 
     const optionsSource: any = form || item;
@@ -236,14 +228,6 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
 
         motivo_id: getOptionValue('motivo_atraso_options')
             ? Object.entries(getOptionValue('motivo_atraso_options')).map(([nome, id]) => ({ id, nome }))
-            : null,
-
-        destino_detalhe_id: getOptionValue('destino_detalhe_options')
-            ? Object.entries(getOptionValue('destino_detalhe_options')).map(([nome, id]) => ({ id, nome }))
-            : null,
-
-        motivo_nao_antecipacao_alta_id: getOptionValue('motivo_nao_antecipacao_alta_options')
-            ? Object.entries(getOptionValue('motivo_nao_antecipacao_alta_options')).map(([nome, id]) => ({ id, nome }))
             : null,
     };
 
@@ -770,20 +754,11 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
                             <>
                                 {renderField('Origem', 'origem_id', item.origem?.nome)}
                                 {renderField('Destino', 'destino_id', item.destino?.nome)}
-                                {renderField('Detalhe do Destino', 'destino_detalhe_id', item.destino_detalhe?.nome)}
                                 {renderField(
                                     'Serviço de Destino',
                                     'servico_destino',
                                     item.servico_destino,
                                     'Preencher quando o destino é uma transferência interna.',
-                                )}
-                                {renderField('Data Prevista de Alta', 'data_prevista_alta', item.data_prevista_alta)}
-                                {renderField('Hora da Alta', 'hora_alta', item.hora_alta)}
-                                {renderField(
-                                    'Motivo de Não Antecipação',
-                                    'motivo_nao_antecipacao_alta_id',
-                                    item.motivo_nao_antecipacao_alta?.nome,
-                                    'Porque é que a alta não saiu mais cedo, quando a data prevista não se cumpriu.',
                                 )}
                             </>
                         )}
