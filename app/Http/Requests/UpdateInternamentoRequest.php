@@ -111,7 +111,10 @@ class UpdateInternamentoRequest extends FormRequest
             'indice_charlson' => 'nullable|integer|min:0',
             'comorbilidades' => 'nullable|array',
             'comorbilidades.*.id' => 'nullable|exists:diagnostico_internamento,id',
-            'comorbilidades.*.codigo' => 'required|string|max:20',
+            // Até 60 em vez dos ~7 caracteres de um código ICD-10: as
+            // comorbilidades escolhidas na checklist directa guardam-se como
+            // "CHARLSON:<categoria>" (ver CharlsonCalculatorService::opcoes()).
+            'comorbilidades.*.codigo' => 'required|string|max:60',
             'comorbilidades.*.descricao' => 'nullable|string|max:255',
             'dias_cuidados_intermedios' => 'nullable|integer|min:0',
             'dias_cuidados_intensivos' => 'nullable|integer|min:0',

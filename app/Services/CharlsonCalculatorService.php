@@ -54,6 +54,50 @@ class CharlsonCalculatorService
     ];
 
     /**
+     * Nomes em português das categorias, para a checklist direta no
+     * frontend — pesquisar código ICD-10 é complexo de mais para o fluxo de
+     * revisão de um caso de M&M, por isso o utilizador escolhe a categoria
+     * diretamente em vez do código. Guardada como `diagnostico_internamento`
+     * com `diagnosticos.codigo = "CHARLSON:<categoria>"` (ver `categoriaDoCodigo`).
+     */
+    public const CATEGORIA_LABELS = [
+        'enfarte_miocardio' => 'Enfarte do miocárdio',
+        'insuficiencia_cardiaca' => 'Insuficiência cardíaca',
+        'doenca_vascular_periferica' => 'Doença vascular periférica',
+        'doenca_cerebrovascular' => 'Doença cerebrovascular (AVC/AIT)',
+        'demencia' => 'Demência',
+        'doenca_pulmonar_cronica' => 'Doença pulmonar crónica (DPOC)',
+        'doenca_reumatologica' => 'Doença reumatológica',
+        'ulcera_peptica' => 'Úlcera péptica',
+        'doenca_hepatica_ligeira' => 'Doença hepática ligeira',
+        'diabetes_sem_complicacoes' => 'Diabetes sem complicações de órgão-alvo',
+        'diabetes_com_complicacoes' => 'Diabetes com complicações de órgão-alvo',
+        'hemiplegia_paraplegia' => 'Hemiplegia ou paraplegia',
+        'doenca_renal' => 'Doença renal moderada/grave',
+        'neoplasia' => 'Neoplasia (sem metástases)',
+        'doenca_hepatica_moderada_grave' => 'Doença hepática moderada/grave',
+        'neoplasia_metastatica' => 'Neoplasia metastática',
+        'sida_vih' => 'SIDA/VIH',
+    ];
+
+    const PREFIXO_CATEGORIA_DIRETA = 'CHARLSON:';
+
+    /**
+     * Para o seletor do frontend: lista das 17 categorias com rótulo e peso.
+     */
+    public static function opcoes(): array
+    {
+        return array_map(
+            fn (string $categoria) => [
+                'key' => $categoria,
+                'label' => self::CATEGORIA_LABELS[$categoria],
+                'peso' => self::CATEGORIAS[$categoria][0],
+            ],
+            array_keys(self::CATEGORIAS)
+        );
+    }
+
+    /**
      * Calcula o score de Charlson para o internamento, ou null se não se
      * aplicar (sem complicações registadas — ver decisão de negócio acima).
      */
@@ -122,16 +166,40 @@ class CharlsonCalculatorService
 
         $presentes = [];
 
-        foreach (self::CATEGORIAS as $categoria => [, $prefixos]) {
-            foreach ($codigos as $codigo) {
+        foreach ($codigos as $codigo) {
+            $categoriaDireta = $this->categoriaDoCodigoDireto($codigo);
+
+            if ($categoriaDireta !== null) {
+                $presentes[] = $categoriaDireta;
+                continue;
+            }
+
+            foreach (self::CATEGORIAS as $categoria => [, $prefixos]) {
                 if ($this->codigoNaCategoria($codigo, $prefixos)) {
                     $presentes[] = $categoria;
-                    break;
                 }
             }
         }
 
-        return $this->aplicarExclusividade($presentes);
+        return $this->aplicarExclusividade(array_values(array_unique($presentes)));
+    }
+
+    /**
+     * Comorbilidades escolhidas diretamente na checklist do frontend (ver
+     * `opcoes()`), guardadas com código `CHARLSON:<categoria>` em vez de um
+     * código ICD-10 real — pesquisar ICD-10 é complexo de mais para este
+     * fluxo. Devolve a categoria se o código for desta forma, ou null se for
+     * um código ICD-10 normal (ex: vindo do SONHO), a tratar por prefixo.
+     */
+    private function categoriaDoCodigoDireto(string $codigo): ?string
+    {
+        if (!str_starts_with($codigo, self::PREFIXO_CATEGORIA_DIRETA)) {
+            return null;
+        }
+
+        $categoria = substr($codigo, strlen(self::PREFIXO_CATEGORIA_DIRETA));
+
+        return array_key_exists($categoria, self::CATEGORIAS) ? $categoria : null;
     }
 
     private function codigoNaCategoria(string $codigo, array $prefixos): bool

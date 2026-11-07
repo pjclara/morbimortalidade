@@ -18,6 +18,7 @@ use App\Models\TipoDeCirurgia;
 use App\Models\User;
 use App\Http\Requests\UpdateInternamentoRequest;
 use App\Services\BlocoOperatorioImportService;
+use App\Services\CharlsonCalculatorService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -238,6 +239,7 @@ class InternamentoController extends Controller
         $destinoDetalheOptions = DestinoDetalhe::orderBy('nome', 'asc')->pluck('id', 'nome');
         $motivoAtrasoOptions = MotivoAtraso::where('ativo', true)->orderBy('nome', 'asc')->pluck('id', 'nome');
         $motivoNaoAntecipacaoAltaOptions = MotivoNaoAntecipacaoAlta::orderBy('nome', 'asc')->pluck('id', 'nome');
+        $charlsonCategoriaOptions = CharlsonCalculatorService::opcoes();
 
         return Inertia::render('Internamento/Index', [
             'items' => $internamentos->through(fn($i) => [
@@ -255,6 +257,7 @@ class InternamentoController extends Controller
                 'destino_detalhe_options' => $destinoDetalheOptions,
                 'motivo_atraso_options' => $motivoAtrasoOptions,
                 'motivo_nao_antecipacao_alta_options' => $motivoNaoAntecipacaoAltaOptions,
+                'charlson_categoria_options' => $charlsonCategoriaOptions,
             ]),
 
             'filters' => $filters,

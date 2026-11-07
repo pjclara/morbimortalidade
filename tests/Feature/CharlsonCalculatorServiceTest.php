@@ -113,6 +113,34 @@ test('detalhar devolve categorias e pontos quando aplicável, null caso contrár
     expect($detalhe['total'])->toBe(1);
 });
 
+test('reconhece categoria escolhida diretamente na checklist (código CHARLSON:<categoria>)', function () {
+    $internamento = internamentoComIdade(35);
+    marcarComComplicacao($internamento);
+    adicionarComorbilidade($internamento, 'CHARLSON:doenca_renal'); // peso 2
+
+    expect((new CharlsonCalculatorService)->calcular($internamento))->toBe(2);
+});
+
+test('categoria direta e código ICD-10 da mesma categoria não duplicam pontos', function () {
+    $internamento = internamentoComIdade(35);
+    marcarComComplicacao($internamento);
+    adicionarComorbilidade($internamento, 'CHARLSON:doenca_pulmonar_cronica');
+    adicionarComorbilidade($internamento, 'J44');
+
+    expect((new CharlsonCalculatorService)->calcular($internamento))->toBe(1);
+});
+
+test('opcoes() devolve as 17 categorias com rótulo e peso', function () {
+    $opcoes = CharlsonCalculatorService::opcoes();
+
+    expect($opcoes)->toHaveCount(17);
+    expect($opcoes[0])->toHaveKeys(['key', 'label', 'peso']);
+
+    $metastatica = collect($opcoes)->firstWhere('key', 'neoplasia_metastatica');
+    expect($metastatica['peso'])->toBe(6);
+    expect($metastatica['label'])->toBe('Neoplasia metastática');
+});
+
 test('Internamento::charlsonCalculado delega no serviço', function () {
     $internamento = internamentoComIdade(35);
     marcarComComplicacao($internamento);
