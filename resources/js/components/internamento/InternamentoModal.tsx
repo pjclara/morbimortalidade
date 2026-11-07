@@ -51,6 +51,7 @@ const SEM_COMPLICACOES_CLAVIEN_ID = 10;
 
 function tabForErrorKey(key: string): string | undefined {
     if (key.startsWith('complicacao_internamentos')) return 'complicacoes';
+    if (key.startsWith('comorbilidades')) return 'complicacoes';
     if (key.startsWith('atrasos_alta')) return 'atraso_alta';
     return FIELD_TAB_MAP[key];
 }
@@ -103,6 +104,10 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
     const [searchResolucao, setSearchResolucao] = useState('');
 
     const [openComplicacao, setOpenComplicacao] = useState<number | null>(null);
+    const [openComorbilidadeSearch, setOpenComorbilidadeSearch] = useState(false);
+    const [comorbilidadeQuery, setComorbilidadeQuery] = useState('');
+    const [comorbilidadeResultados, setComorbilidadeResultados] = useState<any[]>([]);
+    const [comorbilidadeLoading, setComorbilidadeLoading] = useState(false);
     const [openResolucaoModal, setOpenResolucaoModal] = useState(false);
     const [currentResolucaoCi, setCurrentResolucaoCi] = useState<any>(null);
     const [currentResolucaoSelection, setCurrentResolucaoSelection] = useState<number[]>([]);
@@ -170,6 +175,30 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
         setBackendErrors({});
         setTab('internamento');
     }, [item?.id]);
+
+    // Pesquisa de comorbilidades (ICD-10) com debounce — a tabela icd10_cm
+    // tem ~99 mil linhas, por isso é sempre pesquisa no servidor
+    // (GET /diagnosticos?q=), nunca uma lista pré-carregada como as outras.
+    useEffect(() => {
+        if (!openComorbilidadeSearch) return;
+
+        const q = comorbilidadeQuery.trim();
+        if (q.length < 2) {
+            setComorbilidadeResultados([]);
+            return;
+        }
+
+        setComorbilidadeLoading(true);
+        const timer = setTimeout(() => {
+            fetch(`/diagnosticos?q=${encodeURIComponent(q)}`, { headers: { Accept: 'application/json' } })
+                .then((r) => r.json())
+                .then((data) => setComorbilidadeResultados(Array.isArray(data) ? data : []))
+                .catch(() => setComorbilidadeResultados([]))
+                .finally(() => setComorbilidadeLoading(false));
+        }, 300);
+
+        return () => clearTimeout(timer);
+    }, [comorbilidadeQuery, openComorbilidadeSearch]);
 
     // Fechar com a tecla Esc, tal como o clique no botão "Fechar" ou no fundo.
     useEffect(() => {
@@ -260,6 +289,40 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
         setComplicacaoInternamentos(
             complicacaoInternamentos.map((item: any) => (getComplicacaoKey(item) === getComplicacaoKey(ci) ? { ...item, ...patch } : item)),
         );
+    }
+
+    // Comorbilidades = diagnosticos secundários (principal=false) do
+    // internamento, normalizados para {id, codigo, descricao} — a fonte
+    // tanto pode ser o que o SONHO trouxe (`diagnostico_internamento`,
+    // relação aninhada `diagnostico`) como os que o utilizador adicionar
+    // aqui (já nesta forma normalizada). Usadas pelo CharlsonCalculatorService.
+    const comorbilidades: any[] =
+        form.comorbilidades ??
+        (form.diagnosticoInternamentos ?? form.diagnostico_internamento ?? item?.diagnosticoInternamentos ?? item?.diagnostico_internamento ?? [])
+            .filter((d: any) => !Number(d.principal))
+            .map((d: any) => ({ id: d.id, codigo: d.diagnostico?.codigo ?? d.codigo, descricao: d.descricao ?? d.diagnostico?.nome }));
+
+    function setComorbilidades(updated: any[]) {
+        setForm({
+            ...form,
+            comorbilidades: updated,
+        });
+        setIsDirty(true);
+    }
+
+    function getComorbilidadeKey(c: any) {
+        return c.id ?? c._tempId;
+    }
+
+    function addComorbilidade(resultado: { code: string; description: string }) {
+        setComorbilidades([...comorbilidades, { _tempId: Date.now(), codigo: resultado.code, descricao: resultado.description }]);
+        setComorbilidadeQuery('');
+        setComorbilidadeResultados([]);
+        setOpenComorbilidadeSearch(false);
+    }
+
+    function removeComorbilidade(c: any) {
+        setComorbilidades(comorbilidades.filter((item: any) => getComorbilidadeKey(item) !== getComorbilidadeKey(c)));
     }
 
     const atrasosAlta = form.atrasosAlta ?? form.atrasos_alta ?? item?.atrasosAlta ?? item?.atrasos_alta ?? [];
@@ -373,6 +436,11 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
                 data_sinalizacao_servico_social: a.data_sinalizacao_servico_social,
                 data_pedido_rede: a.data_pedido_rede,
                 observacoes: a.observacoes,
+            })),
+            comorbilidades: comorbilidades.map((c: any) => ({
+                id: c.id,
+                codigo: c.codigo,
+                descricao: c.descricao,
             })),
         };
 
@@ -1055,6 +1123,111 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
                                             {backendErrors?.indice_charlson && (
                                                 <span className="mt-1 block text-sm text-red-600">{backendErrors.indice_charlson}</span>
                                             )}
+
+                                            <div className="mt-3 border-t pt-3" style={{ borderColor: LINE }}>
+                                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                                    <span className="text-xs font-medium" style={{ color: '#45524C' }}>
+                                                        Comorbilidades consideradas ({comorbilidades.length})
+                                                    </span>
+
+                                                    {editMode && (
+                                                        <Popover
+                                                            open={openComorbilidadeSearch}
+                                                            onOpenChange={(open) => {
+                                                                setOpenComorbilidadeSearch(open);
+                                                                if (!open) {
+                                                                    setComorbilidadeQuery('');
+                                                                    setComorbilidadeResultados([]);
+                                                                }
+                                                            }}
+                                                        >
+                                                            <PopoverTrigger asChild>
+                                                                <button
+                                                                    type="button"
+                                                                    className="rounded-[4px] border px-2.5 py-1 text-xs font-medium transition hover:bg-[#E3EFEA]"
+                                                                    style={{ borderColor: CLINICAL, color: CLINICAL }}
+                                                                >
+                                                                    Adicionar comorbilidade
+                                                                </button>
+                                                            </PopoverTrigger>
+
+                                                            <PopoverContent className="w-80 p-0">
+                                                                <div className="space-y-2 rounded-b-md border border-slate-200 bg-white p-3 shadow-sm">
+                                                                    <input
+                                                                        type="text"
+                                                                        autoFocus
+                                                                        placeholder="Pesquisar por código ou nome ICD-10..."
+                                                                        value={comorbilidadeQuery}
+                                                                        onChange={(e) => setComorbilidadeQuery(e.target.value)}
+                                                                        className="w-full rounded-md border border-neutral-300 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                                                                    />
+                                                                    <div className="max-h-60 overflow-auto">
+                                                                        {comorbilidadeLoading && (
+                                                                            <div className="px-3 py-2 text-sm text-slate-500">A pesquisar...</div>
+                                                                        )}
+                                                                        {!comorbilidadeLoading && comorbilidadeQuery.trim().length < 2 && (
+                                                                            <div className="px-3 py-2 text-sm text-slate-500">
+                                                                                Escreva pelo menos 2 caracteres.
+                                                                            </div>
+                                                                        )}
+                                                                        {!comorbilidadeLoading &&
+                                                                            comorbilidadeQuery.trim().length >= 2 &&
+                                                                            comorbilidadeResultados.length === 0 && (
+                                                                                <div className="px-3 py-2 text-sm text-slate-500">
+                                                                                    Nenhum código encontrado.
+                                                                                </div>
+                                                                            )}
+                                                                        {comorbilidadeResultados.map((opt: any) => (
+                                                                            <button
+                                                                                key={opt.code}
+                                                                                type="button"
+                                                                                className="flex w-full flex-col items-start rounded-md px-3 py-2 text-left text-sm transition hover:bg-slate-100"
+                                                                                onClick={() => addComorbilidade(opt)}
+                                                                            >
+                                                                                <span className="font-medium" style={{ fontFamily: MONO_FONT }}>
+                                                                                    {opt.code}
+                                                                                </span>
+                                                                                <span className="text-xs text-slate-500">{opt.description}</span>
+                                                                            </button>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            </PopoverContent>
+                                                        </Popover>
+                                                    )}
+                                                </div>
+
+                                                {comorbilidades.length === 0 ? (
+                                                    <p className="mt-1 text-xs" style={{ color: '#5B685F' }}>
+                                                        Nenhuma comorbilidade registada — a sugestão acima não reflete comorbilidades
+                                                        reais, só a idade.
+                                                    </p>
+                                                ) : (
+                                                    <ul className="mt-1 space-y-1">
+                                                        {comorbilidades.map((c: any) => (
+                                                            <li
+                                                                key={getComorbilidadeKey(c)}
+                                                                className="flex items-center justify-between gap-2 text-sm"
+                                                                style={{ color: INK }}
+                                                            >
+                                                                <span>
+                                                                    <span style={{ fontFamily: MONO_FONT }}>{c.codigo}</span> — {c.descricao ?? '-'}
+                                                                </span>
+                                                                {editMode && (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => removeComorbilidade(c)}
+                                                                        className="rounded-[4px] p-1 transition hover:bg-[#FBE7E4]"
+                                                                        style={{ color: ROSE }}
+                                                                    >
+                                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                                    </button>
+                                                                )}
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                )}
+                                            </div>
                                         </div>
                                     );
                                 })()}

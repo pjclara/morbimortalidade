@@ -109,6 +109,10 @@ class UpdateInternamentoRequest extends FormRequest
 
             'asa' => 'nullable|integer|between:1,5',
             'indice_charlson' => 'nullable|integer|min:0',
+            'comorbilidades' => 'nullable|array',
+            'comorbilidades.*.id' => 'nullable|exists:diagnostico_internamento,id',
+            'comorbilidades.*.codigo' => 'required|string|max:20',
+            'comorbilidades.*.descricao' => 'nullable|string|max:255',
             'dias_cuidados_intermedios' => 'nullable|integer|min:0',
             'dias_cuidados_intensivos' => 'nullable|integer|min:0',
         ];

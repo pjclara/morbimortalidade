@@ -360,13 +360,65 @@ class InternamentoController extends Controller
         $atrasosAltaData = $validatedData['atrasos_alta'] ?? [];
         unset($validatedData['atrasos_alta']);
 
+        $comorbilidadesData = $validatedData['comorbilidades'] ?? [];
+        unset($validatedData['comorbilidades']);
+
         // Guardado à parte porque, sem complicações, o Clavien-Dindo é
         // sempre recalculado a seguir — só sobrevive se for explicitamente
         // o grau "Sem complicações" escolhido no separador Complicações.
         $requestedClavienDindoId = $validatedData['clavien_dindo_id'] ?? null;
 
-        DB::transaction(function () use ($internamento, $validatedData, $complicacaoInternamentosData, $atrasosAltaData, $requestedClavienDindoId) {
+        DB::transaction(function () use ($internamento, $validatedData, $complicacaoInternamentosData, $atrasosAltaData, $comorbilidadesData, $requestedClavienDindoId) {
             $internamento->update($validatedData);
+
+            // ---------------------------------------------------------
+            // Sincronizar comorbilidades (diagnostico_internamento com
+            // principal=false) — usadas pelo CharlsonCalculatorService.
+            // A maioria dos internamentos não traz comorbilidades do SONHO
+            // (só vêm as que o próprio episódio de internamento trouxer
+            // codificadas), por isso este é o único sítio onde o utilizador
+            // as pode adicionar manualmente ao rever um caso com complicações.
+            // Mesmo padrão de "full replace" de complicacao_internamentos
+            // abaixo: o frontend envia sempre a lista completa atual.
+            // ---------------------------------------------------------
+            $incomingComorbilidadeIds = [];
+
+            foreach ($comorbilidadesData as $comorbilidadeData) {
+                $codigo = trim($comorbilidadeData['codigo'] ?? '');
+
+                if ($codigo === '') {
+                    continue;
+                }
+
+                $diagnostico = Diagnostico::firstOrCreate(
+                    ['codigo' => $codigo],
+                    ['nome' => $comorbilidadeData['descricao'] ?? $codigo]
+                );
+
+                $existente = !empty($comorbilidadeData['id'])
+                    ? $internamento->diagnosticoInternamentos()->where('id', $comorbilidadeData['id'])->where('principal', false)->first()
+                    : null;
+
+                if ($existente) {
+                    $existente->update([
+                        'diagnostico_id' => $diagnostico->id,
+                        'descricao' => $comorbilidadeData['descricao'] ?? $codigo,
+                    ]);
+                    $incomingComorbilidadeIds[] = $existente->id;
+                } else {
+                    $novaComorbilidade = $internamento->diagnosticoInternamentos()->create([
+                        'diagnostico_id' => $diagnostico->id,
+                        'principal' => false,
+                        'descricao' => $comorbilidadeData['descricao'] ?? $codigo,
+                    ]);
+                    $incomingComorbilidadeIds[] = $novaComorbilidade->id;
+                }
+            }
+
+            $internamento->diagnosticoInternamentos()
+                ->where('principal', false)
+                ->whereNotIn('id', $incomingComorbilidadeIds)
+                ->delete();
 
             // ---------------------------------------------------------
             // Sincronizar atrasos de alta (array repetível, igual ao
