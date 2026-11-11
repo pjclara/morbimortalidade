@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\BlocoOperatorio;
+use App\Models\ClavienDindo;
 use App\Models\Icd10CapitulosSecoes;
 use App\Models\Icd10CM;
 use App\Models\Icd10PcsAxis2Option;
@@ -75,7 +76,11 @@ class AnaliticaController extends Controller
         // ---------------------------------------------------------------
         // KPIs globais
         // ---------------------------------------------------------------
-        $falecidos = (clone $internamentoQuery)->where('falecido', 1)->count();
+        $falecidos = (clone $internamentoQuery)
+            ->where(function ($q) {
+                $q->where('falecido', 1)->orWhere('clavien_dindo_id', ClavienDindo::GRAU_V_ID);
+            })
+            ->count();
         $falecidosAposAlta = (clone $internamentoQuery)->where('falecido_apos_alta', 1)->count();
         $ambulatorio = (clone $blocoQuery)->where('ambulatorio', 'S')->count();
         $comComplicacoes = $totalInternamentos
@@ -210,7 +215,15 @@ class AnaliticaController extends Controller
                 ];
             }
 
-            $falecidos = DB::table('internamentos')->whereIn('id', $ids)->where('falecido', 1)->count();
+            // Óbito = destino "Falecido" OU Clavien-Dindo Grau V — quem morre
+            // depois da alta (destino continua "Alta") passa a Grau V mas
+            // nunca muda o destino, por isso a mortalidade tem de contar as
+            // duas condições para não perder esses doentes.
+            $falecidos = DB::table('internamentos')->whereIn('id', $ids)
+                ->where(function ($q) {
+                    $q->where('falecido', 1)->orWhere('clavien_dindo_id', ClavienDindo::GRAU_V_ID);
+                })
+                ->count();
             $falecidosAposAlta = DB::table('internamentos')->whereIn('id', $ids)->where('falecido_apos_alta', 1)->count();
             $mediaDias = DB::table('internamentos')->whereIn('id', $ids)->avg('dias_internamento');
 
@@ -262,7 +275,7 @@ class AnaliticaController extends Controller
                 equipas.id, equipas.nome,
                 COUNT(*) as total,
                 AVG(internamentos.dias_internamento) as media_dias,
-                SUM(CASE WHEN internamentos.falecido = 1 THEN 1 ELSE 0 END) as obitos
+                SUM(CASE WHEN internamentos.falecido = 1 OR internamentos.clavien_dindo_id = " . ClavienDindo::GRAU_V_ID . " THEN 1 ELSE 0 END) as obitos
             ")
             ->groupBy('equipas.id', 'equipas.nome')
             ->orderByDesc('total')

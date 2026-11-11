@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ClavienDindo;
 use App\Models\Internamento;
 use App\Models\Lotacao;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -104,7 +105,7 @@ class RelatorioCirurgiaController extends Controller
         // -----------------------------------------------------------------
         // Mortalidade, altas que saem depois da alta clínica
         // -----------------------------------------------------------------
-        $falecidos = $episodios->where('falecido', true)->count();
+        $falecidos = $episodios->filter(fn($e) => $this->ehObito($e))->count();
         $saiDepoisAlta = $episodios->filter(fn($e) => $this->saiDepoisDaAltaClinica($e))->count();
 
         $diasInternamentoOrdenados = $episodios->pluck('dias_internamento')->filter(fn($d) => $d !== null)->sort()->values();
@@ -199,7 +200,7 @@ class RelatorioCirurgiaController extends Controller
                 fn($e) => $e->data_saida && Carbon::parse($e->data_saida)->between($inicioEfetivo, $fimEfetivo)
             );
             $saidas = $episodiosPeriodo->count();
-            $obitos = $episodiosPeriodo->where('falecido', true)->count();
+            $obitos = $episodiosPeriodo->filter(fn($e) => $this->ehObito($e))->count();
             $diasCama = $dias * $lot->numero_camas;
 
             $diasAcimaLotacaoPeriodo = collect($censoDiario)
@@ -247,7 +248,7 @@ class RelatorioCirurgiaController extends Controller
         $porFaixaEtaria = collect(self::FAIXAS_IDADE)->map(function ($faixa) use ($comIdade) {
             $grupo = $comIdade->where('faixa', $faixa);
             $total = $grupo->count();
-            $obitos = $grupo->where('falecido', true)->count();
+            $obitos = $grupo->filter(fn($e) => $this->ehObito($e))->count();
             $comAtraso = $grupo->filter(fn($e) => $this->saiDepoisDaAltaClinica($e))->count();
 
             return [
@@ -266,7 +267,7 @@ class RelatorioCirurgiaController extends Controller
 
         $perfilSegmento = function ($grupo) use ($totalEpisodios) {
             $total = $grupo->count();
-            $obitos = $grupo->where('falecido', true)->count();
+            $obitos = $grupo->filter(fn($e) => $this->ehObito($e))->count();
             $dias = $grupo->pluck('dias_internamento')->filter(fn($d) => $d !== null)->values();
 
             return [
@@ -290,7 +291,7 @@ class RelatorioCirurgiaController extends Controller
             ->groupBy(fn($e) => $e->origem?->nome ?? 'Sem origem')
             ->map(function ($grupo, $nome) use ($totalEpisodios) {
                 $total = $grupo->count();
-                $obitos = $grupo->where('falecido', true)->count();
+                $obitos = $grupo->filter(fn($e) => $this->ehObito($e))->count();
                 return [
                     'nome' => $nome,
                     'total' => $total,
@@ -305,7 +306,7 @@ class RelatorioCirurgiaController extends Controller
         // -----------------------------------------------------------------
         // Óbitos e readmissões
         // -----------------------------------------------------------------
-        $obitosEpisodios = $episodios->where('falecido', true);
+        $obitosEpisodios = $episodios->filter(fn($e) => $this->ehObito($e));
         $obitosComIdade = $obitosEpisodios->filter(fn($e) => $e->patient?->data_nascimento)
             ->map(fn($e) => $this->idadeEm($e->patient->data_nascimento, $e->data_entrada));
 
@@ -532,6 +533,17 @@ class RelatorioCirurgiaController extends Controller
      * isso todas as comparações de datas neste relatório passam por
      * Carbon::parse() explícito em vez de confiar em casts automáticos.
      */
+    /**
+     * Óbito = destino "Falecido" OU Clavien-Dindo Grau V. Quem morre depois
+     * da alta clínica fica com destino "Alta" (nunca muda), mas passa a
+     * Grau V — por isso a mortalidade tem de contar as duas condições para
+     * não perder esses doentes.
+     */
+    private function ehObito(Internamento $e): bool
+    {
+        return (bool) $e->falecido || $e->clavien_dindo_id === ClavienDindo::GRAU_V_ID;
+    }
+
     private function saiDepoisDaAltaClinica(Internamento $e): bool
     {
         if (!$e->data_alta || !$e->data_saida) {
