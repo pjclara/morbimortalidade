@@ -433,7 +433,7 @@ export default function Index({ items, filters, responsavel_options, clavien_opt
                                         Processo
                                     </th>
                                     <th className="px-4 py-2.5 font-medium" style={{ color: '#45524C' }}>
-                                        Entrada
+                                        Estado
                                     </th>
                                     <th className="px-4 py-2.5 font-medium" style={{ color: '#45524C' }}>
                                         Saída
@@ -492,11 +492,10 @@ export default function Index({ items, filters, responsavel_options, clavien_opt
                                                     '-'
                                                 )}
                                             </td>
-                                            <td
-                                                className="px-4 py-2.5 tabular-nums"
-                                                style={{ fontFamily: "'IBM Plex Mono', ui-monospace, monospace" }}
-                                            >
-                                                {i.data_entrada ?? '-'}
+                                            <td className="px-4 py-2.5">
+                                                {{ para_fazer: 'Para fazer', parcialmente_feito: 'Parcialmente feito', feito: 'Feito' }[
+                                                    i.estado as string
+                                                ] ?? '-'}
                                             </td>
                                             <td
                                                 className="px-4 py-2.5 tabular-nums"
