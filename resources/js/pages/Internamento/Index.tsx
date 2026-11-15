@@ -58,6 +58,13 @@ const ROSE_SOFT = '#FBE7E4';
 const AMBER = '#9A6B12';
 const AMBER_SOFT = '#FBF0DC';
 
+// Tags da coluna Estado (ver Internamento::ESTADO_OPTIONS, no backend).
+const ESTADO_TAGS: Record<string, { label: string; bg: string; fg: string }> = {
+    para_fazer: { label: 'Para fazer', bg: ROSE_SOFT, fg: ROSE },
+    parcialmente_feito: { label: 'Parcialmente feito', bg: AMBER_SOFT, fg: AMBER },
+    feito: { label: 'Feito', bg: CLINICAL_SOFT, fg: CLINICAL },
+};
+
 const fieldLabel = 'text-xs font-medium tracking-normal text-[#45524C]';
 const fieldInput =
     'rounded-[4px] border border-[#C9D1CB] bg-white px-2.5 py-1.5 text-sm text-[#17241F] outline-none transition focus:border-[#1E6F5C] focus:ring-2 focus:ring-[#1E6F5C]/20 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100';
@@ -433,9 +440,6 @@ export default function Index({ items, filters, responsavel_options, clavien_opt
                                         Processo
                                     </th>
                                     <th className="px-4 py-2.5 font-medium" style={{ color: '#45524C' }}>
-                                        Estado
-                                    </th>
-                                    <th className="px-4 py-2.5 font-medium" style={{ color: '#45524C' }}>
                                         Saída
                                     </th>
                                     <th className="px-4 py-2.5 font-medium" style={{ color: '#45524C' }}>
@@ -452,6 +456,9 @@ export default function Index({ items, filters, responsavel_options, clavien_opt
                                     </th>
                                     <th className="px-4 py-2.5 font-medium" style={{ color: '#45524C' }}>
                                         Responsável
+                                    </th>
+                                    <th className="px-4 py-2.5 font-medium" style={{ color: '#45524C' }}>
+                                        Estado
                                     </th>
                                     <th className="px-4 py-2.5 font-medium" style={{ color: '#45524C' }}>
                                         Observações
@@ -491,11 +498,6 @@ export default function Index({ items, filters, responsavel_options, clavien_opt
                                                 ) : (
                                                     '-'
                                                 )}
-                                            </td>
-                                            <td className="px-4 py-2.5">
-                                                {{ para_fazer: 'Para fazer', parcialmente_feito: 'Parcialmente feito', feito: 'Feito' }[
-                                                    i.estado as string
-                                                ] ?? '-'}
                                             </td>
                                             <td
                                                 className="px-4 py-2.5 tabular-nums"
@@ -560,6 +562,21 @@ export default function Index({ items, filters, responsavel_options, clavien_opt
                                             </td>
                                             <td className="px-4 py-2.5">{i.clavien_dindo?.nome ?? '-'}</td>
                                             <td className="px-4 py-2.5">{i.responsavel?.name ?? '-'}</td>
+                                            <td className="px-4 py-2.5">
+                                                {ESTADO_TAGS[i.estado as string] ? (
+                                                    <span
+                                                        className="rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap"
+                                                        style={{
+                                                            backgroundColor: ESTADO_TAGS[i.estado as string].bg,
+                                                            color: ESTADO_TAGS[i.estado as string].fg,
+                                                        }}
+                                                    >
+                                                        {ESTADO_TAGS[i.estado as string].label}
+                                                    </span>
+                                                ) : (
+                                                    '-'
+                                                )}
+                                            </td>
                                             <td className="group relative px-4 py-2.5">
                                                 {i.observacoes ? i.observacoes.slice(0, 10) + (i.observacoes.length > 10 ? '…' : '') : '-'}
 
