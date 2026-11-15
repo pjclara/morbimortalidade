@@ -39,11 +39,19 @@ const FIELD_TAB_MAP: Record<string, string> = {
     clavien_dindo_id: 'complicacoes',
     indice_charlson: 'complicacoes',
     observacoes: 'observacoes',
+    estado: 'observacoes',
     readmissao_planeada: 'readmissao',
     origem_id: 'destino',
     destino_id: 'destino',
     servico_destino: 'destino',
 };
+
+// Estados do internamento (ver Internamento::ESTADO_OPTIONS, no backend).
+const ESTADO_OPTIONS = [
+    { id: 'para_fazer', nome: 'Para fazer' },
+    { id: 'parcialmente_feito', nome: 'Parcialmente feito' },
+    { id: 'feito', nome: 'Feito' },
+];
 
 // Grau Clavien-Dindo usado para assinalar explicitamente "sem complicações"
 // (ver App\Models\ClavienDindo::SEM_COMPLICACOES_ID, no backend).
@@ -188,6 +196,7 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
     if (!open) return null;
 
     const editableFields = [
+        'estado',
         'observacoes',
         'mortalidade_esperada',
         'bloquear',
@@ -215,6 +224,8 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
 
     // 🔥 Converte objetos em arrays automaticamente
     const selectFields: any = {
+        estado: ESTADO_OPTIONS,
+
         clavien_dindo_id: getOptionValue('clavien_options')
             ? Object.entries(getOptionValue('clavien_options')).map(([nome, id]) => ({ id, nome }))
             : null,
@@ -812,7 +823,16 @@ export default function InternamentoModal({ open, onClose, item, onSave }: any) 
                             </>
                         )}
 
-                        {tab === 'observacoes' && <>{renderField('Observações', 'observacoes', item.observacoes ?? '-')}</>}
+                        {tab === 'observacoes' && (
+                            <>
+                                {renderField(
+                                    'Estado',
+                                    'estado',
+                                    ESTADO_OPTIONS.find((o) => o.id === (item.estado ?? 'para_fazer'))?.nome,
+                                )}
+                                {renderField('Observações', 'observacoes', item.observacoes ?? '-')}
+                            </>
+                        )}
 
                         {tab === 'readmissao' && (
                             <>{renderField('Readmissão Planeada', 'readmissao_planeada', form.readmissao_planeada ?? item.readmissao_planeada)}</>

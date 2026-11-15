@@ -28,7 +28,14 @@ class Internamento extends Model
         'outra',
     ];
 
-    protected $fillable = ['asa', 'bloquear', 'causas_readmissao', 'clavien_dindo_id', 'consulta_pos_alta_marcada', 'contacto_telefonico_pos_alta', 'data_alta', 'data_consulta_pos_alta', 'data_contacto_pos_alta', 'data_entrada', 'data_prevista_alta', 'data_saida', 'demora_permanencia_urgencia', 'destino_detalhe_id', 'destino_id', 'dias_cuidados_intensivos', 'dias_cuidados_intermedios', 'dias_internamento', 'episodio', 'equipa_id', 'falecido', 'falecido_apos_alta', 'hora_alta', 'indice_charlson', 'mortalidade_esperada', 'motivo_nao_antecipacao_alta_id', 'observacoes', 'origem_id', 'patient_id', 'readmissao_planeada', 'readmissao_relacionada', 'responsavel_id', 'servico_destino'];
+    /** Estados possíveis do internamento (coluna `estado`). */
+    public const ESTADO_OPTIONS = [
+        'para_fazer' => 'Para fazer',
+        'parcialmente_feito' => 'Parcialmente feito',
+        'feito' => 'Feito',
+    ];
+
+    protected $fillable = ['estado', 'asa','bloquear', 'causas_readmissao', 'clavien_dindo_id', 'consulta_pos_alta_marcada', 'contacto_telefonico_pos_alta', 'data_alta', 'data_consulta_pos_alta', 'data_contacto_pos_alta', 'data_entrada', 'data_prevista_alta', 'data_saida', 'demora_permanencia_urgencia', 'destino_detalhe_id', 'destino_id', 'dias_cuidados_intensivos', 'dias_cuidados_intermedios', 'dias_internamento', 'episodio', 'equipa_id', 'falecido', 'falecido_apos_alta', 'hora_alta', 'indice_charlson', 'mortalidade_esperada', 'motivo_nao_antecipacao_alta_id', 'observacoes', 'origem_id', 'patient_id', 'readmissao_planeada', 'readmissao_relacionada', 'responsavel_id', 'servico_destino'];
 
     protected $casts = [
         'causas_readmissao' => 'array',
